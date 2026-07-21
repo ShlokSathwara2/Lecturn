@@ -18,6 +18,8 @@ async def create_capture(body: CaptureCreate):
     data = body.model_dump()
     if not data.get("chapter_id"):
         data.pop("chapter_id", None)
+    if not data.get("subject_id"):
+        data.pop("subject_id", None)
     result = supabase.table("captures").insert(data).execute()
     return result.data[0]
 
