@@ -140,8 +140,12 @@ export default function CapturePage() {
         image_url: url,
       })
 
-      const processResult = await processApi.capture(cap.id)
-      setAssignedChapter(processResult?.chapter_title || null)
+      try {
+        const processResult = await processApi.capture(cap.id)
+        setAssignedChapter(processResult?.chapter_title || null)
+      } catch (procErr) {
+        console.warn("Processing will run later:", procErr)
+      }
 
       if (audioBlob) {
         try {

@@ -171,7 +171,16 @@ async def process_single_capture(capture_id: str, format: str = "exam-oriented",
 
 @router.post("")
 async def process_capture(body: ProcessRequest) -> ProcessResponse:
-    return await process_single_capture(body.capture_id)
+    try:
+        return await process_single_capture(body.capture_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Process failed for {body.capture_id}: {e}")
+        return ProcessResponse(
+            capture_id=body.capture_id, raw_text="", diagram_count=0,
+            summary=f"Processing will retry later", provider="pending",
+        )
 
 @router.post("/batch")
 async def process_batch(body: BatchProcessRequest) -> list[ProcessResponse]:
