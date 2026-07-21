@@ -25,6 +25,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var V = 5;
+            var v = parseInt(localStorage.getItem('ss_v') || '0');
+            if (v < V) {
+              localStorage.setItem('ss_v', V);
+              if ('caches' in window) {
+                caches.keys().then(function(ks) {
+                  return Promise.all(ks.map(function(k) { return caches.delete(k); }));
+                }).then(function() {
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                      return Promise.all(regs.map(function(r) { return r.unregister(); }));
+                    }).then(function() { location.reload(true); });
+                  } else {
+                    location.reload(true);
+                  }
+                });
+              } else {
+                location.reload(true);
+              }
+            }
+          })();
+        ` }} />
       </head>
       <body>
         {children}
