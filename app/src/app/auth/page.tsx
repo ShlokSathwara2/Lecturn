@@ -22,6 +22,8 @@ export default function AuthPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -112,22 +114,34 @@ export default function AuthPage() {
 
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
               <label style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#606060", marginBottom: 6, display: "block" }}>Password</label>
-              <motion.input
-                type="password" placeholder="At least 6 characters" value={password}
-                onChange={(e) => setPassword(e.target.value)} required minLength={6}
-                whileFocus={{ borderColor: "#3b82f6", boxShadow: "0 0 0 3px rgba(59,130,246,0.1)" }}
-                style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", boxSizing: "border-box", transition: "all 0.2s ease" }} />
+              <div style={{ position: "relative" }}>
+                <motion.input
+                  type={showPassword ? "text" : "password"} placeholder="At least 6 characters" value={password}
+                  onChange={(e) => setPassword(e.target.value)} required minLength={6}
+                  whileFocus={{ borderColor: "#3b82f6", boxShadow: "0 0 0 3px rgba(59,130,246,0.1)" }}
+                  style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", boxSizing: "border-box", transition: "all 0.2s ease", paddingRight: 48 }} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#606060", cursor: "pointer", fontSize: 18, padding: 4 }}>
+                  {showPassword ? "\u{1F441}" : "\u{1F441}\u200D\u{1F5E8}"}
+                </button>
+              </div>
             </motion.div>
 
             <AnimatePresence>
               {mode === "signup" && (
                 <motion.div key="confirm" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                   <label style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#606060", marginBottom: 6, display: "block" }}>Confirm Password</label>
-                  <motion.input
-                    type="password" placeholder="Re-enter your password" value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6}
-                    whileFocus={{ borderColor: "#3b82f6", boxShadow: "0 0 0 3px rgba(59,130,246,0.1)" }}
-                    style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", boxSizing: "border-box", transition: "all 0.2s ease" }} />
+                  <div style={{ position: "relative" }}>
+                    <motion.input
+                      type={showConfirm ? "text" : "password"} placeholder="Re-enter your password" value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6}
+                      whileFocus={{ borderColor: "#3b82f6", boxShadow: "0 0 0 3px rgba(59,130,246,0.1)" }}
+                      style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", boxSizing: "border-box", transition: "all 0.2s ease", paddingRight: 48 }} />
+                    <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#606060", cursor: "pointer", fontSize: 18, padding: 4 }}>
+                      {showConfirm ? "\u{1F441}" : "\u{1F441}\u200D\u{1F5E8}"}
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
