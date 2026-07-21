@@ -5,7 +5,7 @@ from ..services.vision import process_image
 from ..services.diagrams import process_diagrams
 from ..services.enrichment import enrich_text
 from ..services.embeddings import generate_embedding
-from ..services.quality import compute_image_hash, hamming_distance, score_confidence
+from ..services.quality import compute_image_hash, hamming_distance, score_confidence, DUPLICATE_THRESHOLD
 from .chapters import suggest_chapter_for_text
 from datetime import date
 
