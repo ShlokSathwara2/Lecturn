@@ -70,8 +70,20 @@ export const captures = {
   uploadImage: async (file: File) => {
     const form = new FormData()
     form.append("file", file)
-    const res = await fetch(`${API_BASE}/captures/upload`, { method: "POST", body: form })
-    if (!res.ok) throw new Error("Upload failed")
+    const url = `${API_BASE}/captures/upload`
+    console.log("UPLOAD URL:", url)
+    let res: Response
+    try {
+      res = await fetch(url, { method: "POST", body: form })
+    } catch (fetchErr: any) {
+      console.error("FETCH ERROR:", fetchErr)
+      throw new Error("Network error: " + (fetchErr?.message || fetchErr))
+    }
+    console.log("UPLOAD STATUS:", res.status, res.statusText)
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error("Upload failed (" + res.status + "): " + text)
+    }
     return res.json() as Promise<{ filename: string; url: string }>
   },
 }
