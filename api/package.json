@@ -1,0 +1,9 @@
+{
+  "name": "@slidescribe/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "uvicorn src.main:app --reload --port 8000",
+    "build": "uvicorn src.main:app --port 8000"
+  }
+}

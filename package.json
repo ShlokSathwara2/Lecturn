@@ -1,0 +1,12 @@
+{
+  "name": "slidescribe",
+  "private": true,
+  "workspaces": ["app", "api", "shared"],
+  "scripts": {
+    "dev": "npm run dev -w app",
+    "dev:app": "npm run dev -w app",
+    "dev:api": "npm run dev -w api",
+    "build:app": "npm run build -w app",
+    "build:api": "npm run build -w api"
+  }
+}
