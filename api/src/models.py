@@ -47,6 +47,7 @@ class CaptureUpdate(BaseModel):
     status: Optional[str] = None
     subject_id: Optional[str] = None
     chapter_id: Optional[str] = None
+    image_url: Optional[str] = None
     image_hash: Optional[str] = None
     cleaned_diagram_url: Optional[str] = None
     original_diagram_crop_url: Optional[str] = None

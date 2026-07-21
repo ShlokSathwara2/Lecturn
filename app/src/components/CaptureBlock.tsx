@@ -19,6 +19,7 @@ interface CaptureBlockProps {
   editable?: boolean
   onEdit?: (rawText: string, aiContent: string | null) => void
   onDelete?: () => void
+  onDeleteImage?: () => void
   transcript?: string | null
   audioUrl?: string | null
   status?: string
@@ -34,6 +35,7 @@ export default function CaptureBlock({
   editable,
   onEdit,
   onDelete,
+  onDeleteImage,
   transcript,
   audioUrl,
   status,
@@ -44,6 +46,7 @@ export default function CaptureBlock({
   const [editText, setEditText] = useState(rawText)
   const [editAi, setEditAi] = useState(aiContent || "")
   const [showDelete, setShowDelete] = useState(false)
+  const [showDeleteImage, setShowDeleteImage] = useState(false)
 
   function handleSave() {
     onEdit?.(editText, editAi || null)
@@ -70,6 +73,12 @@ export default function CaptureBlock({
             style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontFamily: "var(--font-mono)", background: "rgba(0,0,0,0.6)", color: "#909090", border: "1px solid #2a2a2a" }}>
             Edit
           </button>
+          {imageUrl && onDeleteImage && (
+            <button onClick={onDeleteImage}
+              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontFamily: "var(--font-mono)", background: "rgba(245,158,11,0.2)", color: "#f59e0b", border: "1px solid #f59e0b" }}>
+              Del Img
+            </button>
+          )}
           <button onClick={() => setShowDelete(true)}
             style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontFamily: "var(--font-mono)", background: "rgba(220,38,38,0.2)", color: "#ef4444", border: "1px solid #ef4444" }}>
             Del
@@ -173,6 +182,19 @@ export default function CaptureBlock({
             <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
               <button onClick={() => setShowDelete(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #2a2a2a", fontSize: 13 }}>Cancel</button>
               <button onClick={() => { setShowDelete(false); onDelete?.() }} style={{ padding: "8px 16px", borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 13 }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteImage && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, borderRadius: 12 }}>
+          <div style={{ background: "#1a1a1a", borderRadius: 12, padding: 20, margin: 24, border: "1px solid #2a2a2a", textAlign: "center" }}>
+            <p style={{ fontSize: 14, marginBottom: 8 }}>Delete the image?</p>
+            <p style={{ fontSize: 12, color: "#909090", marginBottom: 16 }}>Notes will be kept. Only the photo is removed.</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button onClick={() => setShowDeleteImage(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #2a2a2a", fontSize: 13 }}>Cancel</button>
+              <button onClick={() => { setShowDeleteImage(false); onDeleteImage?.() }} style={{ padding: "8px 16px", borderRadius: 8, background: "#f59e0b", color: "#000", fontSize: 13, fontWeight: 500 }}>Delete Image</button>
             </div>
           </div>
         </div>

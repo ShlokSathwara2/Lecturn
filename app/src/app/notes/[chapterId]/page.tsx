@@ -116,6 +116,11 @@ export default function ChapterNotesPage() {
     setCaptures((prev) => prev.filter((c) => c.id !== id))
   }
 
+  async function handleDeleteImage(id: string) {
+    await capturesApi.update(id, { image_url: "" } as any)
+    setCaptures((prev) => prev.map((c) => c.id === id ? { ...c, image_url: null } : c))
+  }
+
   async function handleAddNote() {
     if (!noteText.trim() || !chapter) return
     setAddingNote(true)
@@ -213,6 +218,7 @@ export default function ChapterNotesPage() {
               editable
               onEdit={(t, ai) => handleEditCapture(cap.id, t, ai)}
               onDelete={() => handleDeleteCapture(cap.id)}
+              onDeleteImage={() => handleDeleteImage(cap.id)}
               transcript={audioMap[cap.id]?.transcript || null}
               audioUrl={audioMap[cap.id]?.audio_url || null}
               status={cap.status}

@@ -3,39 +3,28 @@
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processingApi } from "@/lib/api"
+import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
 import { getQueue, removeFromQueue } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
-import { exportApi } from "@/lib/api"
-import ExportDropdown from "@/components/ExportDropdown"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
-interface Capture { id: string; chapter_id: string; subject_id?: string; image_url?: string; raw_text?: string; ai_status: string; status: string; date_taken: string; chapters?: { id: string; title: string; subject_id: string } }
-
-type FormatOption = "exam-oriented" | "easy" | "summary" | "diagram-focused"
 
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
 
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [captures, setCaptures] = useState<Capture[]>([])
-  const [selectedSubject, setSelectedSubject] = useState("")
-  const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
-  const [selectedCaptures, setSelectedCaptures] = useState<Set<string>>(new Set())
-  const [showFormatPicker, setShowFormatPicker] = useState(false)
-  const [format, setFormat] = useState<FormatOption>("exam-oriented")
-  const [generating, setGenerating] = useState(false)
-  const [generateResult, setGenerateResult] = useState("")
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
+  const [chaptersBySubject, setChaptersBySubject] = useState<Record<string, Chapter[]>>({})
+  const [loading, setLoading] = useState(true)
 
   const online = useOnlineStatus()
   const [pendingCount, setPendingCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
 
-  const [unassigned, setUnassigned] = useState<Capture[]>([])
-  const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [newSubjectName, setNewSubjectName] = useState("")
+  const [addingSubject, setAddingSubject] = useState(false)
 
   const refreshQueue = useCallback(async () => {
     try {
@@ -71,7 +60,7 @@ export default function DashboardPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push("/auth"); return }
-      subjectsApi.list(data.user.id).then(setSubjects)
+      loadSubjects(data.user.id)
       refreshQueue()
     })
   }, [])
@@ -80,120 +69,63 @@ export default function DashboardPage() {
     if (online && pendingCount > 0) syncQueue()
   }, [online])
 
-  useEffect(() => {
-    if (selectedSubject) {
-      chaptersApi.list(selectedSubject).then(setChapters)
-      setCaptures([])
-      setSelectedChapters(new Set())
-    } else {
-      setChapters([])
-      setCaptures([])
-      setSelectedChapters(new Set())
-    }
-  }, [selectedSubject])
-
-  useEffect(() => {
-    capturesApi.unassigned().then(setUnassigned).catch(() => setUnassigned([]))
-  }, [])
-
-  async function loadCaptures() {
-    if (selectedChapters.size === 0) return
-    const all: Capture[] = []
-    for (const chId of selectedChapters) {
-      const caps = await capturesApi.list(chId)
-      all.push(...caps)
-    }
-    all.sort((a, b) => new Date(b.date_taken).getTime() - new Date(a.date_taken).getTime())
-    setCaptures(all)
-  }
-
-  useEffect(() => { loadCaptures() }, [selectedChapters])
-
-  function toggleChapter(id: string) {
-    const next = new Set(selectedChapters)
-    next.has(id) ? next.delete(id) : next.add(id)
-    setSelectedChapters(next)
-    setSelectedCaptures(new Set())
-  }
-
-  function toggleCapture(id: string) {
-    const next = new Set(selectedCaptures)
-    next.has(id) ? next.delete(id) : next.add(id)
-    setSelectedCaptures(next)
-  }
-
-  async function handleBatchGenerate() {
-    const ids = Array.from(selectedCaptures)
-    if (ids.length === 0) { alert("Select captures first"); return }
-    setShowFormatPicker(true)
-  }
-
-  async function confirmGenerate() {
-    const ids = Array.from(selectedCaptures)
-    if (ids.length === 0) return
-    setShowFormatPicker(false)
-    setGenerating(true)
-    setGenerateResult("")
+  async function loadSubjects(userId?: string) {
+    setLoading(true)
     try {
-      const results = await processingApi.batch(ids, format)
-      const ok = results.filter((r: any) => !r.summary.startsWith("Failed")).length
-      setGenerateResult(`Generated ${ok}/${ids.length} captures`)
-      loadCaptures()
-    } catch (e: any) {
-      setGenerateResult(`Error: ${e.message}`)
-    } finally {
-      setGenerating(false)
+      const list = await subjectsApi.list(userId || "")
+      setSubjects(list)
+    } catch {}
+    setLoading(false)
+  }
+
+  async function toggleSubject(subjectId: string) {
+    if (expandedSubject === subjectId) {
+      setExpandedSubject(null)
+      return
+    }
+    setExpandedSubject(subjectId)
+    if (!chaptersBySubject[subjectId]) {
+      try {
+        const chs = await chaptersApi.list(subjectId)
+        setChaptersBySubject((prev) => ({ ...prev, [subjectId]: chs }))
+      } catch {}
     }
   }
 
-  async function assignSubject(captureId: string, subjectId: string) {
-    setAssigningId(null)
+  async function addSubject() {
+    if (!newSubjectName.trim()) return
+    setAddingSubject(true)
     try {
-      await capturesApi.update(captureId, { subject_id: subjectId })
-      setUnassigned((prev) => prev.filter((c) => c.id !== captureId))
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      await subjectsApi.create({ name: newSubjectName.trim(), user_id: user.id })
+      setNewSubjectName("")
+      await loadSubjects(user.id)
     } catch (e) {
-      console.warn("Assign failed", e)
+      console.warn("Failed to add subject", e)
     }
+    setAddingSubject(false)
   }
 
-  const needsGeneration = captures.filter((c) => c.ai_status === "not_generated")
-
-  const captureItem = (cap: Capture) => {
-    const needsAI = cap.ai_status === "not_generated"
-    const needsReview = cap.status === "needs_review"
-    const borderColor = needsReview ? "#f59e0b" : needsAI ? "#3b82f6" : "#2a2a2a"
-    const dotColor = needsReview ? "#f59e0b" : needsAI ? "#3b82f6" : "#059669"
-    return (
-      <label key={cap.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "#1a1a1a", border: `1px solid ${borderColor}`, cursor: "pointer" }}>
-        <input type="checkbox" checked={selectedCaptures.has(cap.id)} onChange={() => toggleCapture(cap.id)} style={{ accentColor: "#3b82f6", width: 18, height: 18, flexShrink: 0 }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-            <p style={{ fontSize: 13, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {cap.raw_text ? cap.raw_text.slice(0, 60) + "..." : "Slide photo"}
-            </p>
-          </div>
-          <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
-            {cap.chapters?.title ? `${cap.chapters.title} · ` : ""}
-            {new Date(cap.date_taken).toLocaleString()} · {cap.ai_status.replace("_", " ")}
-            {needsReview ? " · needs review" : ""}
-          </p>
-        </div>
-      </label>
-    )
+  async function deleteSubject(subjectId: string) {
+    if (!confirm("Delete this subject and all its chapters?")) return
+    try {
+      await subjectsApi.delete(subjectId)
+      setSubjects((prev) => prev.filter((s) => s.id !== subjectId))
+      setChaptersBySubject((prev) => { const n = { ...prev }; delete n[subjectId]; return n })
+    } catch (e) {
+      console.warn("Delete failed", e)
+    }
   }
 
   return (
     <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>Dashboard</h1>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#059669" : "#f59e0b", flexShrink: 0 }} />
           <button onClick={() => router.push("/capture")} style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
             Capture
-          </button>
-          <button onClick={() => router.push("/usage")} style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
-            Usage
           </button>
           <button onClick={() => router.push("/")} style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
             Home
@@ -217,146 +149,63 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {unassigned.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <p style={{ fontSize: 13, color: "#f59e0b", fontFamily: "var(--font-mono)" }}>
-            UNASSIGNED ({unassigned.length})
-          </p>
-          {unassigned.map((cap) => (
-            <div key={cap.id} style={{ padding: "10px 12px", borderRadius: 10, background: "#1a1a1a", border: "1px solid #f59e0b" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => router.push(`/capture/${cap.id}`)}>
-                  <p style={{ fontSize: 13, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {cap.raw_text ? cap.raw_text.slice(0, 60) + "..." : "Slide photo"}
-                  </p>
-                  <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
-                    {new Date(cap.date_taken).toLocaleString()} · {cap.ai_status.replace("_", " ")}
-                  </p>
-                </div>
-                {assigningId === cap.id ? (
-                  <div style={{ display: "flex", gap: 4, flexShrink: 0, flexWrap: "wrap" }}>
-                    {subjects.length > 0 ? subjects.map((s) => (
-                      <button key={s.id} onClick={() => assignSubject(cap.id, s.id)}
-                        style={{ padding: "6px 10px", borderRadius: 6, background: "#2a2a2a", color: "#e8e8e8", fontSize: 11, whiteSpace: "nowrap" }}>
-                        {s.name}
-                      </button>
-                    )) : (
-                      <span style={{ fontSize: 11, color: "#606060" }}>No subjects — create one from Home first</span>
-                    )}
-                    <button onClick={() => setAssigningId(null)} style={{ padding: "6px 8px", borderRadius: 6, color: "#606060", fontSize: 11 }}>
-                      &times;
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={() => setAssigningId(cap.id)}
-                    style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a2a2a", color: "#f59e0b", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
-                    Assign
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div style={{ display: "flex", gap: 8 }}>
-        <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)}
-          style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none" }}>
-          <option value="">All subjects</option>
-          {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        {selectedSubject && (
-          <>
-            <button onClick={() => router.push(`/quiz/${selectedSubject}`)}
-              style={{ padding: "12px 20px", borderRadius: 10, background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 500, whiteSpace: "nowrap" }}>
-              Revise
-            </button>
-            <ExportDropdown
-              getUrl={(fmt) => exportApi.subjectUrl(selectedSubject, fmt)}
-              filename={subjects.find(s => s.id === selectedSubject)?.name || "subject"}
-              label="Export"
-            />
-          </>
-        )}
+        <input value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} placeholder="New subject name..."
+          onKeyDown={(e) => e.key === "Enter" && addSubject()}
+          style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 15, color: "#e8e8e8", outline: "none" }} />
+        <button onClick={addSubject} disabled={!newSubjectName.trim() || addingSubject}
+          style={{ padding: "12px 20px", borderRadius: 10, background: newSubjectName.trim() ? "#3b82f6" : "#2a2a2a", color: "#fff", fontSize: 14, fontWeight: 500, opacity: addingSubject ? 0.6 : 1 }}>
+          {addingSubject ? "..." : "Add"}
+        </button>
       </div>
 
-      {selectedSubject && chapters.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <p style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>CHAPTERS</p>
-          {chapters.map((ch) => (
-            <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: selectedChapters.has(ch.id) ? "#1a2a3a" : "#1a1a1a", border: "1px solid #2a2a2a" }}>
-              <input type="checkbox" checked={selectedChapters.has(ch.id)} onChange={() => toggleChapter(ch.id)} style={{ accentColor: "#3b82f6", width: 18, height: 18, flexShrink: 0 }} />
-              <div style={{ flex: 1, cursor: "pointer" }} onClick={() => toggleChapter(ch.id)}>
-                <p style={{ fontSize: 14, fontWeight: 500 }}>{ch.title}</p>
-                <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)" }}>
-                  {new Date(ch.created_at).toLocaleDateString()}
-                </p>
-              </div>
-              <button onClick={() => router.push(`/notes/${ch.id}`)}
-                style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "var(--font-mono)", background: "transparent", border: "1px solid #2a2a2a", color: "#909090", whiteSpace: "nowrap" }}>
-                Notes &rarr;
-              </button>
-            </div>
-          ))}
+      {loading && (
+        <div style={{ textAlign: "center", padding: 32 }}>
+          <p style={{ fontSize: 14, color: "#909090" }}>Loading...</p>
         </div>
       )}
 
-      {!selectedSubject && (
+      {!loading && subjects.length === 0 && (
         <div style={{ textAlign: "center", padding: 32, border: "1px dashed #2a2a2a", borderRadius: 12 }}>
-          <p style={{ fontSize: 14, color: "#606060" }}>Select a subject to browse chapters</p>
+          <p style={{ fontSize: 14, color: "#606060" }}>No subjects yet. Add one above.</p>
         </div>
       )}
 
-      {captures.length > 0 && selectedCaptures.size > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-          <p style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>
-            {needsGeneration.length} of {captures.length} need AI
-          </p>
-          <button onClick={handleBatchGenerate} disabled={generating}
-            style={{ padding: "14px 24px", borderRadius: 12, background: "#3b82f6", color: "#fff", fontSize: 16, fontWeight: 600, opacity: generating ? 0.6 : 1 }}>
-            {generating ? "Generating..." : `Generate AI (${selectedCaptures.size} selected)`}
-          </button>
-        </div>
-      )}
-
-      {generateResult && (
-        <p style={{ fontSize: 13, color: "#059669", textAlign: "center", fontFamily: "var(--font-mono)" }}>
-          {generateResult}
-        </p>
-      )}
-
-      {showFormatPicker && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 24 }}>
-          <div style={{ background: "#1a1a1a", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400, border: "1px solid #2a2a2a" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Choose format</h2>
-            <p style={{ fontSize: 13, color: "#909090", marginBottom: 16 }}>
-              Applied to all {selectedCaptures.size} selected captures
-            </p>
-            {(["exam-oriented", "easy", "summary", "diagram-focused"] as FormatOption[]).map((f) => (
-              <label key={f} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, marginBottom: 6, background: format === f ? "#1a2a3a" : "transparent", cursor: "pointer" }}>
-                <input type="radio" name="format" checked={format === f} onChange={() => setFormat(f)} style={{ accentColor: "#3b82f6" }} />
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 500, textTransform: "capitalize" }}>{f.replace("-", " ")}</p>
-                  <p style={{ fontSize: 12, color: "#606060" }}>
-                    {f === "exam-oriented" ? "Key exam points, definitions, common questions" :
-                     f === "easy" ? "Simple explanation with analogies" :
-                     f === "summary" ? "Concise plain-text summary" :
-                     "Focus on diagrams and visual elements"}
-                  </p>
-                </div>
-              </label>
-            ))}
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button onClick={() => setShowFormatPicker(false)} style={{ flex: 1, padding: 12, borderRadius: 10, border: "1px solid #2a2a2a", fontSize: 14 }}>
-                Cancel
-              </button>
-              <button onClick={confirmGenerate} style={{ flex: 1, padding: 12, borderRadius: 10, background: "#3b82f6", color: "#fff", fontSize: 14, fontWeight: 500 }}>
-                Generate
-              </button>
-            </div>
+      {subjects.map((s) => (
+        <div key={s.id}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 10, background: expandedSubject === s.id ? "#1a2a3a" : "#1a1a1a", border: "1px solid #2a2a2a", cursor: "pointer" }}
+            onClick={() => toggleSubject(s.id)}>
+            <span style={{ fontSize: 14, color: expandedSubject === s.id ? "#3b82f6" : "#909090", transition: "transform 0.2s", transform: expandedSubject === s.id ? "rotate(90deg)" : "rotate(0deg)" }}>
+              &#9654;
+            </span>
+            <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#e8e8e8" }}>{s.name}</span>
+            <button onClick={(e) => { e.stopPropagation(); deleteSubject(s.id) }}
+              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, color: "#ef4444", border: "1px solid #ef4444", background: "transparent" }}>
+              Del
+            </button>
           </div>
+
+          {expandedSubject === s.id && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, marginTop: 4 }}>
+              {(chaptersBySubject[s.id] || []).length === 0 && (
+                <p style={{ fontSize: 13, color: "#606060", padding: "8px 0" }}>No chapters yet. Upload a slide and assign to this subject.</p>
+              )}
+              {(chaptersBySubject[s.id] || []).map((ch) => (
+                <div key={ch.id} onClick={() => router.push(`/notes/${ch.id}`)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, background: "#1a1a1a", border: "1px solid #2a2a2a", cursor: "pointer" }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8" }}>{ch.title}</p>
+                    <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                      {new Date(ch.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 13, color: "#909090" }}>&rarr;</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      ))}
     </main>
   )
 }
