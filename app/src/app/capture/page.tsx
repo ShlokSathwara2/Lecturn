@@ -109,6 +109,7 @@ export default function CapturePage() {
 
   async function handleSubmit() {
     if (!capturedFile || !user) return
+    if (!selectedSubject) { alert("Please select a subject first"); return }
     setUploading(true)
 
     try {
