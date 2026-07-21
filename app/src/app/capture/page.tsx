@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSwipe } from "@/lib/useSwipe"
-import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processApi, API_BASE as _API_BASE } from "@/lib/api"
+import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processApi } from "@/lib/api"
 import { createClient } from "@/lib/supabase"
 import { preprocess, type PreprocessResult } from "@/lib/preprocess"
 import { queueCapture } from "@/lib/offline-queue"
@@ -183,10 +183,6 @@ export default function CapturePage() {
             Back
           </button>
         </div>
-      </div>
-
-      <div style={{ background: "#000", padding: 8, borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "#f59e0b", wordBreak: "break-all" }}>
-        API: {_API_BASE}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

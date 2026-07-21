@@ -68,23 +68,16 @@ export const captures = {
   semanticSearch: (q: string, subject_id?: string, ai_status?: string) =>
     request<any[]>(`/search/semantic?q=${encodeURIComponent(q)}&subject_id=${subject_id || ""}&ai_status=${ai_status || ""}`),
   uploadImage: async (file: File) => {
-    const form = new FormData()
-    form.append("file", file)
-    const url = `${API_BASE}/captures/upload`
-    console.log("UPLOAD URL:", url)
-    let res: Response
-    try {
-      res = await fetch(url, { method: "POST", body: form })
-    } catch (fetchErr: any) {
-      console.error("FETCH ERROR:", fetchErr)
-      throw new Error("Network error: " + (fetchErr?.message || fetchErr))
-    }
-    console.log("UPLOAD STATUS:", res.status, res.statusText)
-    if (!res.ok) {
-      const text = await res.text()
-      throw new Error("Upload failed (" + res.status + "): " + text)
-    }
-    return res.json() as Promise<{ filename: string; url: string }>
+    const { createClient } = await import("@/lib/supabase")
+    const supabase = createClient()
+    const ext = file.name.split(".").pop() || "jpg"
+    const fileName = `${crypto.randomUUID()}.${ext}`
+    const { error } = await supabase.storage.from("slide-images").upload(fileName, file, {
+      contentType: file.type || "image/jpeg",
+    })
+    if (error) throw new Error("Upload failed: " + error.message)
+    const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(fileName)
+    return { filename: fileName, url: urlData.publicUrl }
   },
 }
 
@@ -92,12 +85,15 @@ export const audioNotes = {
   list: (captureId: string) =>
     request<any[]>(`/audio-notes?capture_id=${captureId}`),
   upload: async (captureId: string, file: Blob) => {
-    const form = new FormData()
-    form.append("capture_id", captureId)
-    form.append("file", file, "audio.webm")
-    const res = await fetch(`${API_BASE}/audio-notes/upload`, { method: "POST", body: form })
-    if (!res.ok) throw new Error("Audio upload failed")
-    return res.json() as Promise<any>
+    const { createClient } = await import("@/lib/supabase")
+    const supabase = createClient()
+    const fileName = `${captureId}/audio.webm`
+    const { error } = await supabase.storage.from("slide-images").upload(fileName, file, {
+      contentType: "audio/webm",
+    })
+    if (error) throw new Error("Audio upload failed: " + error.message)
+    const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(fileName)
+    return { url: urlData.publicUrl }
   },
 }
 
