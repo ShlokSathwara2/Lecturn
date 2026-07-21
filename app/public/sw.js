@@ -1,11 +1,11 @@
-const CACHE_NAME = "slidescribe-v2"
+const CACHE_NAME = "slidescribe-v3"
 const STATIC_ASSETS = ["/", "/auth", "/capture", "/dashboard", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-180.png"]
 const API_CACHE = "slidescribe-api-v1"
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
-  )
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => caches.delete("slidescribe-v2")),
+  );
   self.skipWaiting()
 })
 
