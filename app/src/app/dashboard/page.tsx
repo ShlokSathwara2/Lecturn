@@ -250,9 +250,10 @@ export default function DashboardPage() {
                 ) : (
                   <button onClick={() => setAssigningId(cap.id)}
                     style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a2a2a", color: "#f59e0b", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
-                  Assign
-                </button>
-              )}
+                    Assign
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
