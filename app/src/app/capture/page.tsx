@@ -42,6 +42,7 @@ export default function CapturePage() {
         router.push("/auth")
       }
     })
+  }, [])
 
   async function handleCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
