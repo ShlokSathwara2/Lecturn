@@ -1,4 +1,4 @@
-const API_BASE = "https://lecturn-wa7t.onrender.com"
+export const API_BASE = "https://lecturn-wa7t.onrender.com"
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
