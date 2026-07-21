@@ -108,12 +108,12 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 }
 
 const features = [
-  { title: "Snap & Go", desc: "Photograph lecture slides instantly. Our preprocessing engine enhances readability before AI extraction.", icon: "\u{1F4F7}" },
-  { title: "AI Vision OCR", desc: "Extracts every word, diagram, and formula from slides using multi-model AI (Gemini + OpenRouter fallback).", icon: "\u{1F9E0}" },
-  { title: "Smart Enrichment", desc: "Converts raw text into exam-oriented study notes, summaries, easy explanations, or diagram breakdowns.", icon: "\u2728" },
-  { title: "Voice Notes", desc: "Record audio alongside slides. Transcribed automatically via Whisper and synced to your notes.", icon: "\u{1F399}\uFE0F" },
-  { title: "Search & Organize", desc: "Keyword and semantic search across all notes. Auto-detect chapters and organize by subject.", icon: "\u{1F50D}" },
-  { title: "Offline & Export", desc: "Queue captures when offline, sync later. Export as PDF, DOCX, RTF, TXT, or Evernote.", icon: "\u{1F4E4}" },
+  { title: "Snap & Go", desc: "Photograph lecture slides instantly. Our preprocessing engine enhances readability before AI extraction." },
+  { title: "AI Vision OCR", desc: "Extracts every word, diagram, and formula from slides using multi-model AI (Gemini + OpenRouter fallback)." },
+  { title: "Smart Enrichment", desc: "Converts raw text into exam-oriented study notes, summaries, easy explanations, or diagram breakdowns." },
+  { title: "Voice Notes", desc: "Record audio alongside slides. Transcribed automatically via Whisper and synced to your notes." },
+  { title: "Search & Organize", desc: "Keyword and semantic search across all notes. Auto-detect chapters and organize by subject." },
+  { title: "Offline & Export", desc: "Queue captures when offline, sync later. Export as PDF, DOCX, RTF, TXT, or Evernote." },
 ]
 
 const steps = [
@@ -232,7 +232,6 @@ export default function Home() {
               <FadeInSection key={i} delay={i * 0.08}>
                 <motion.div whileHover={{ y: -4 }} className="card-hover"
                   style={{ padding: "24px 20px", borderRadius: 16, background: "rgba(26,26,26,0.6)", backdropFilter: "blur(8px)", border: "1px solid #2a2a2a", cursor: "default" }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>{f.icon}</div>
                   <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 8 }}>{f.title}</h3>
                   <p style={{ fontSize: 14, color: "#909090", lineHeight: 1.6 }}>{f.desc}</p>
                 </motion.div>
