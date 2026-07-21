@@ -1,9 +1,10 @@
-export const API_BASE = "https://lecturn-wa7t.onrender.com"
+const PROXY = "/api/proxy"
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${PROXY}?path=${encodeURIComponent(path)}`, {
+    method: options?.method || "GET",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    ...options,
+    body: options?.body,
   })
   if (!res.ok) {
     const text = await res.text()
@@ -68,16 +69,17 @@ export const captures = {
   semanticSearch: (q: string, subject_id?: string, ai_status?: string) =>
     request<any[]>(`/search/semantic?q=${encodeURIComponent(q)}&subject_id=${subject_id || ""}&ai_status=${ai_status || ""}`),
   uploadImage: async (file: File) => {
-    const { createClient } = await import("@/lib/supabase")
-    const supabase = createClient()
-    const ext = file.name.split(".").pop() || "jpg"
-    const fileName = `${crypto.randomUUID()}.${ext}`
-    const { error } = await supabase.storage.from("slide-images").upload(fileName, file, {
-      contentType: file.type || "image/jpeg",
+    const form = new FormData()
+    form.append("file", file)
+    const res = await fetch(`${PROXY}?path=${encodeURIComponent("/captures/upload")}`, {
+      method: "POST",
+      body: form,
     })
-    if (error) throw new Error("Upload failed: " + error.message)
-    const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(fileName)
-    return { filename: fileName, url: urlData.publicUrl }
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error("Upload failed (" + res.status + "): " + text)
+    }
+    return res.json() as Promise<{ filename: string; url: string }>
   },
 }
 
@@ -85,15 +87,15 @@ export const audioNotes = {
   list: (captureId: string) =>
     request<any[]>(`/audio-notes?capture_id=${captureId}`),
   upload: async (captureId: string, file: Blob) => {
-    const { createClient } = await import("@/lib/supabase")
-    const supabase = createClient()
-    const fileName = `${captureId}/audio.webm`
-    const { error } = await supabase.storage.from("slide-images").upload(fileName, file, {
-      contentType: "audio/webm",
+    const form = new FormData()
+    form.append("capture_id", captureId)
+    form.append("file", file, "audio.webm")
+    const res = await fetch(`${PROXY}?path=${encodeURIComponent("/audio-notes/upload")}`, {
+      method: "POST",
+      body: form,
     })
-    if (error) throw new Error("Audio upload failed: " + error.message)
-    const { data: urlData } = supabase.storage.from("slide-images").getPublicUrl(fileName)
-    return { url: urlData.publicUrl }
+    if (!res.ok) throw new Error("Audio upload failed")
+    return res.json() as Promise<any>
   },
 }
 
@@ -109,9 +111,9 @@ export const quiz = {
 
 export const exportApi = {
   subjectUrl: (subjectId: string, format: string) =>
-    `${API_BASE}/export/subject/${subjectId}?format=${format}`,
+    `/api/proxy?path=${encodeURIComponent(`/export/subject/${subjectId}?format=${format}`)}`,
   chapterUrl: (chapterId: string, format: string) =>
-    `${API_BASE}/export/chapter/${chapterId}?format=${format}`,
+    `/api/proxy?path=${encodeURIComponent(`/export/chapter/${chapterId}?format=${format}`)}`,
   async download(url: string, filename: string) {
     const res = await fetch(url)
     if (!res.ok) throw new Error("Export failed")
