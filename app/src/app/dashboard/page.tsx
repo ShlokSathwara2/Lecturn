@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processingApi } from "@/lib/api"
@@ -11,15 +11,13 @@ import ExportDropdown from "@/components/ExportDropdown"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
-interface Capture { id: string; chapter_id: string; image_url?: string; raw_text?: string; ai_status: string; status: string; date_taken: string; chapters?: { id: string; title: string; subject_id: string } }
+interface Capture { id: string; chapter_id: string; subject_id?: string; image_url?: string; raw_text?: string; ai_status: string; status: string; date_taken: string; chapters?: { id: string; title: string; subject_id: string } }
 
 type FormatOption = "exam-oriented" | "easy" | "summary" | "diagram-focused"
-type AiFilter = "" | "not_generated" | "auto_generated" | "manually_generated"
 
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
-  const searchRef = useRef<HTMLInputElement>(null)
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [chapters, setChapters] = useState<Chapter[]>([])
@@ -36,11 +34,8 @@ export default function DashboardPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<Capture[] | null>(null)
-  const [searching, setSearching] = useState(false)
-  const [aiFilter, setAiFilter] = useState<AiFilter>("")
-  const [needsReviewFilter, setNeedsReviewFilter] = useState(false)
+  const [unassigned, setUnassigned] = useState<Capture[]>([])
+  const [assigningId, setAssigningId] = useState<string | null>(null)
 
   const refreshQueue = useCallback(async () => {
     try {
@@ -89,11 +84,17 @@ export default function DashboardPage() {
     if (selectedSubject) {
       chaptersApi.list(selectedSubject).then(setChapters)
       setCaptures([])
+      setSelectedChapters(new Set())
     } else {
       setChapters([])
       setCaptures([])
+      setSelectedChapters(new Set())
     }
   }, [selectedSubject])
+
+  useEffect(() => {
+    capturesApi.unassigned().then(setUnassigned).catch(() => setUnassigned([]))
+  }, [])
 
   async function loadCaptures() {
     if (selectedChapters.size === 0) return
@@ -107,23 +108,6 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { loadCaptures() }, [selectedChapters])
-
-  useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults(null); return }
-    const timer = setTimeout(async () => {
-      setSearching(true)
-      try {
-        const results = await capturesApi.search({
-          q: searchQuery,
-          ai_status: aiFilter || undefined,
-          needs_review: needsReviewFilter || undefined,
-        })
-        setSearchResults(results)
-      } catch { setSearchResults([]) }
-      setSearching(false)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchQuery, aiFilter, needsReviewFilter])
 
   function toggleChapter(id: string) {
     const next = new Set(selectedChapters)
@@ -162,23 +146,23 @@ export default function DashboardPage() {
     }
   }
 
-  const isSearching = searchQuery.trim().length > 0
-  const displayCaptures = isSearching ? (searchResults || []) : captures
-  const needsGeneration = displayCaptures.filter((c) => c.ai_status === "not_generated")
+  async function assignSubject(captureId: string, subjectId: string) {
+    setAssigningId(null)
+    try {
+      await capturesApi.update(captureId, { subject_id: subjectId })
+      setUnassigned((prev) => prev.filter((c) => c.id !== captureId))
+    } catch (e) {
+      console.warn("Assign failed", e)
+    }
+  }
 
-  const filterChip = (label: string, active: boolean, onClick: () => void) => (
-    <button onClick={onClick}
-      style={{ padding: "4px 12px", borderRadius: 16, fontSize: 12, fontFamily: "var(--font-mono)", border: "1px solid", background: active ? "#3b82f6" : "transparent", color: active ? "#fff" : "#909090", borderColor: active ? "#3b82f6" : "#2a2a2a" }}>
-      {label}
-    </button>
-  )
+  const needsGeneration = captures.filter((c) => c.ai_status === "not_generated")
 
   const captureItem = (cap: Capture) => {
     const needsAI = cap.ai_status === "not_generated"
     const needsReview = cap.status === "needs_review"
     const borderColor = needsReview ? "#f59e0b" : needsAI ? "#3b82f6" : "#2a2a2a"
     const dotColor = needsReview ? "#f59e0b" : needsAI ? "#3b82f6" : "#059669"
-    const chapterTitle = cap.chapters?.title || ""
     return (
       <label key={cap.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "#1a1a1a", border: `1px solid ${borderColor}`, cursor: "pointer" }}>
         <input type="checkbox" checked={selectedCaptures.has(cap.id)} onChange={() => toggleCapture(cap.id)} style={{ accentColor: "#3b82f6", width: 18, height: 18, flexShrink: 0 }} />
@@ -190,7 +174,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
-            {isSearching && chapterTitle ? `${chapterTitle} · ` : ""}
+            {cap.chapters?.title ? `${cap.chapters.title} · ` : ""}
             {new Date(cap.date_taken).toLocaleString()} · {cap.ai_status.replace("_", " ")}
             {needsReview ? " · needs review" : ""}
           </p>
@@ -219,7 +203,6 @@ export default function DashboardPage() {
 
       {pendingCount > 0 && online && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#1a2a1a", border: "1px solid #059669" }}>
-          <span style={{ fontSize: 14 }}>&#x1F504;</span>
           <p style={{ flex: 1, fontSize: 13, color: "#e8e8e8" }}>{pendingCount} capture{pendingCount !== 1 ? "s" : ""} waiting to sync</p>
           <button onClick={syncQueue} disabled={syncing}
             style={{ padding: "6px 14px", borderRadius: 8, background: "#059669", color: "#fff", fontSize: 12, fontWeight: 500, opacity: syncing ? 0.6 : 1 }}>
@@ -230,98 +213,100 @@ export default function DashboardPage() {
 
       {pendingCount > 0 && !online && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#2a2a1a", border: "1px solid #f59e0b" }}>
-          <span style={{ fontSize: 14 }}>&#x1F4E4;</span>
           <p style={{ flex: 1, fontSize: 13, color: "#e8e8e8" }}>{pendingCount} capture{pendingCount !== 1 ? "s" : ""} queued — will sync when online</p>
         </div>
       )}
 
-      <div style={{ position: "sticky", top: 0, zIndex: 10, background: "#121212", paddingTop: 4, paddingBottom: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#1a1a1a", borderRadius: 10, border: "1px solid #2a2a2a", padding: "0 12px" }}>
-          <span style={{ fontSize: 16, color: "#606060" }}>&#x1F50D;</span>
-          <input ref={searchRef} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search across all notes..." autoComplete="off"
-            style={{ flex: 1, padding: "12px 8px", background: "transparent", fontSize: 15, outline: "none", border: "none", color: "#e8e8e8" }} />
-          {searchQuery && (
-            <button onClick={() => { setSearchQuery(""); setSearchResults(null) }} style={{ fontSize: 16, color: "#606060", padding: 4 }}>
-              &times;
-            </button>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {filterChip("All", aiFilter === "", () => setAiFilter(""))}
-          {filterChip("Needs AI", aiFilter === "not_generated", () => setAiFilter(aiFilter === "not_generated" ? "" : "not_generated"))}
-          {filterChip("Has AI", aiFilter === "auto_generated", () => setAiFilter(aiFilter === "auto_generated" ? "" : "auto_generated"))}
-          {filterChip("Review", needsReviewFilter, () => setNeedsReviewFilter(!needsReviewFilter))}
-        </div>
-      </div>
-
-      {isSearching && (
+      {unassigned.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <p style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>
-            {searching ? "Searching..." : `${searchResults?.length || 0} results for "${searchQuery}"`}
+          <p style={{ fontSize: 13, color: "#f59e0b", fontFamily: "var(--font-mono)" }}>
+            UNASSIGNED ({unassigned.length})
           </p>
-          {(searchResults || []).length === 0 && !searching && (
-            <p style={{ fontSize: 14, color: "#606060", padding: 24, textAlign: "center" }}>No matching captures found.</p>
-          )}
-          {searchResults?.map(captureItem)}
-        </div>
-      )}
-
-      {!isSearching && (
-        <>
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)}
-              style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none" }}>
-              <option value="">All subjects</option>
-              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            {selectedSubject && (
-              <>
-                <button onClick={() => router.push(`/quiz/${selectedSubject}`)}
-                  style={{ padding: "12px 20px", borderRadius: 10, background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 500, whiteSpace: "nowrap" }}>
-                  Revise
-                </button>
-                <ExportDropdown
-                  getUrl={(fmt) => exportApi.subjectUrl(selectedSubject, fmt)}
-                  filename={subjects.find(s => s.id === selectedSubject)?.name || "subject"}
-                  label="Export"
-                />
-              </>
-            )}
-          </div>
-
-          {selectedSubject && chapters.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>CHAPTERS</p>
-              {chapters.map((ch) => (
-                <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: selectedChapters.has(ch.id) ? "#1a2a3a" : "#1a1a1a", border: "1px solid #2a2a2a" }}>
-                  <input type="checkbox" checked={selectedChapters.has(ch.id)} onChange={() => toggleChapter(ch.id)} style={{ accentColor: "#3b82f6", width: 18, height: 18, flexShrink: 0 }} />
-                  <div style={{ flex: 1, cursor: "pointer" }} onClick={() => toggleChapter(ch.id)}>
-                    <p style={{ fontSize: 14, fontWeight: 500 }}>{ch.title}</p>
-                    <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)" }}>
-                      {new Date(ch.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button onClick={() => router.push(`/notes/${ch.id}`)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "var(--font-mono)", background: "transparent", border: "1px solid #2a2a2a", color: "#909090", whiteSpace: "nowrap" }}>
-                    Notes &rarr;
+          {unassigned.map((cap) => (
+            <div key={cap.id} style={{ padding: "10px 12px", borderRadius: 10, background: "#1a1a1a", border: "1px solid #f59e0b", display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {cap.raw_text ? cap.raw_text.slice(0, 60) + "..." : "Slide photo"}
+                </p>
+                <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                  {new Date(cap.date_taken).toLocaleString()} · {cap.ai_status.replace("_", " ")}
+                </p>
+              </div>
+              {assigningId === cap.id ? (
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  {subjects.map((s) => (
+                    <button key={s.id} onClick={() => assignSubject(cap.id, s.id)}
+                      style={{ padding: "6px 10px", borderRadius: 6, background: "#2a2a2a", color: "#e8e8e8", fontSize: 11, whiteSpace: "nowrap" }}>
+                      {s.name}
+                    </button>
+                  ))}
+                  <button onClick={() => setAssigningId(null)} style={{ padding: "6px 8px", borderRadius: 6, color: "#606060", fontSize: 11 }}>
+                    &times;
                   </button>
                 </div>
-              ))}
+              ) : (
+                <button onClick={() => setAssigningId(cap.id)}
+                  style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a2a2a", color: "#f59e0b", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
+                  Assign
+                </button>
+              )}
             </div>
-          )}
-
-          {!selectedSubject && (
-            <div style={{ textAlign: "center", padding: 32, border: "1px dashed #2a2a2a", borderRadius: 12 }}>
-              <p style={{ fontSize: 14, color: "#606060" }}>Select a subject to browse chapters</p>
-            </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
 
-      {displayCaptures.length > 0 && selectedCaptures.size > 0 && (
+      <div style={{ display: "flex", gap: 8 }}>
+        <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)}
+          style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none" }}>
+          <option value="">All subjects</option>
+          {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        {selectedSubject && (
+          <>
+            <button onClick={() => router.push(`/quiz/${selectedSubject}`)}
+              style={{ padding: "12px 20px", borderRadius: 10, background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 500, whiteSpace: "nowrap" }}>
+              Revise
+            </button>
+            <ExportDropdown
+              getUrl={(fmt) => exportApi.subjectUrl(selectedSubject, fmt)}
+              filename={subjects.find(s => s.id === selectedSubject)?.name || "subject"}
+              label="Export"
+            />
+          </>
+        )}
+      </div>
+
+      {selectedSubject && chapters.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <p style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>CHAPTERS</p>
+          {chapters.map((ch) => (
+            <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: selectedChapters.has(ch.id) ? "#1a2a3a" : "#1a1a1a", border: "1px solid #2a2a2a" }}>
+              <input type="checkbox" checked={selectedChapters.has(ch.id)} onChange={() => toggleChapter(ch.id)} style={{ accentColor: "#3b82f6", width: 18, height: 18, flexShrink: 0 }} />
+              <div style={{ flex: 1, cursor: "pointer" }} onClick={() => toggleChapter(ch.id)}>
+                <p style={{ fontSize: 14, fontWeight: 500 }}>{ch.title}</p>
+                <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)" }}>
+                  {new Date(ch.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <button onClick={() => router.push(`/notes/${ch.id}`)}
+                style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: "var(--font-mono)", background: "transparent", border: "1px solid #2a2a2a", color: "#909090", whiteSpace: "nowrap" }}>
+                Notes &rarr;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!selectedSubject && (
+        <div style={{ textAlign: "center", padding: 32, border: "1px dashed #2a2a2a", borderRadius: 12 }}>
+          <p style={{ fontSize: 14, color: "#606060" }}>Select a subject to browse chapters</p>
+        </div>
+      )}
+
+      {captures.length > 0 && selectedCaptures.size > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
           <p style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>
-            {needsGeneration.length} of {displayCaptures.length} need AI
+            {needsGeneration.length} of {captures.length} need AI
           </p>
           <button onClick={handleBatchGenerate} disabled={generating}
             style={{ padding: "14px 24px", borderRadius: 12, background: "#3b82f6", color: "#fff", fontSize: 16, fontWeight: 600, opacity: generating ? 0.6 : 1 }}>

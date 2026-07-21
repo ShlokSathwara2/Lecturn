@@ -13,6 +13,11 @@ async def list_captures(chapter_id: str = ""):
         query = query.eq("chapter_id", chapter_id)
     return query.execute().data
 
+@router.get("/unassigned")
+async def list_unassigned_captures():
+    data = supabase.table("captures").select("*").is_("subject_id", "null").order("date_taken", desc=True).execute()
+    return data.data
+
 @router.post("", status_code=201)
 async def create_capture(body: CaptureCreate):
     data = body.model_dump()

@@ -55,6 +55,8 @@ export const captures = {
     request<any>(`/captures/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<any>(`/captures/${id}`, { method: "DELETE" }),
+  unassigned: () =>
+    request<any[]>("/captures/unassigned"),
   search: async (params: { q?: string; subject_id?: string; chapter_id?: string; ai_status?: string; date_from?: string; date_to?: string; needs_review?: boolean }) => {
     const query = new URLSearchParams()
     if (params.q) query.set("q", params.q)
