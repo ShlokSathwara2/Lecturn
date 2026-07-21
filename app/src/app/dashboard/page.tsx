@@ -223,30 +223,33 @@ export default function DashboardPage() {
             UNASSIGNED ({unassigned.length})
           </p>
           {unassigned.map((cap) => (
-            <div key={cap.id} style={{ padding: "10px 12px", borderRadius: 10, background: "#1a1a1a", border: "1px solid #f59e0b", display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {cap.raw_text ? cap.raw_text.slice(0, 60) + "..." : "Slide photo"}
-                </p>
-                <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
-                  {new Date(cap.date_taken).toLocaleString()} · {cap.ai_status.replace("_", " ")}
-                </p>
-              </div>
-              {assigningId === cap.id ? (
-                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                  {subjects.map((s) => (
-                    <button key={s.id} onClick={() => assignSubject(cap.id, s.id)}
-                      style={{ padding: "6px 10px", borderRadius: 6, background: "#2a2a2a", color: "#e8e8e8", fontSize: 11, whiteSpace: "nowrap" }}>
-                      {s.name}
-                    </button>
-                  ))}
-                  <button onClick={() => setAssigningId(null)} style={{ padding: "6px 8px", borderRadius: 6, color: "#606060", fontSize: 11 }}>
-                    &times;
-                  </button>
+            <div key={cap.id} style={{ padding: "10px 12px", borderRadius: 10, background: "#1a1a1a", border: "1px solid #f59e0b" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => router.push(`/capture/${cap.id}`)}>
+                  <p style={{ fontSize: 13, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {cap.raw_text ? cap.raw_text.slice(0, 60) + "..." : "Slide photo"}
+                  </p>
+                  <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                    {new Date(cap.date_taken).toLocaleString()} · {cap.ai_status.replace("_", " ")}
+                  </p>
                 </div>
-              ) : (
-                <button onClick={() => setAssigningId(cap.id)}
-                  style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a2a2a", color: "#f59e0b", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
+                {assigningId === cap.id ? (
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0, flexWrap: "wrap" }}>
+                    {subjects.length > 0 ? subjects.map((s) => (
+                      <button key={s.id} onClick={() => assignSubject(cap.id, s.id)}
+                        style={{ padding: "6px 10px", borderRadius: 6, background: "#2a2a2a", color: "#e8e8e8", fontSize: 11, whiteSpace: "nowrap" }}>
+                        {s.name}
+                      </button>
+                    )) : (
+                      <span style={{ fontSize: 11, color: "#606060" }}>No subjects — create one from Home first</span>
+                    )}
+                    <button onClick={() => setAssigningId(null)} style={{ padding: "6px 8px", borderRadius: 6, color: "#606060", fontSize: 11 }}>
+                      &times;
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAssigningId(cap.id)}
+                    style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a2a2a", color: "#f59e0b", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
                   Assign
                 </button>
               )}

@@ -49,6 +49,8 @@ export const processing = {
 export const captures = {
   list: (chapterId?: string) =>
     request<any[]>(`/captures${chapterId ? `?chapter_id=${chapterId}` : ""}`),
+  get: (id: string) =>
+    request<any>(`/captures/${id}`),
   create: (data: { chapter_id?: string; subject_id?: string; image_url?: string; raw_text?: string }) =>
     request<any>("/captures", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: { raw_text?: string; ai_content_json?: any; chapter_id?: string; ai_status?: string; subject_id?: string }) =>
