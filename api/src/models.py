@@ -45,6 +45,7 @@ class CaptureUpdate(BaseModel):
     ai_status: Optional[str] = None
     confidence_score: Optional[float] = None
     status: Optional[str] = None
+    subject_id: Optional[str] = None
     chapter_id: Optional[str] = None
     image_hash: Optional[str] = None
     cleaned_diagram_url: Optional[str] = None

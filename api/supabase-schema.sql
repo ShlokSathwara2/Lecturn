@@ -8,6 +8,13 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 INSERT INTO storage.buckets (id, name, public) VALUES ('slide-images', 'slide-images', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- 2b. Storage policies (allow all uploads to public bucket)
+CREATE POLICY "Allow all uploads" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'slide-images');
+
+CREATE POLICY "Allow public reads" ON storage.objects
+  FOR SELECT USING (bucket_id = 'slide-images');
+
 -- 3. Tables
 CREATE TABLE IF NOT EXISTS subjects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

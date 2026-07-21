@@ -1,17 +1,14 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSwipe } from "@/lib/useSwipe"
-import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processApi } from "@/lib/api"
+import { subjects as subjectsApi, captures as capturesApi, processing as processApi } from "@/lib/api"
 import { createClient } from "@/lib/supabase"
 import { preprocess, type PreprocessResult } from "@/lib/preprocess"
 import { queueCapture } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
 import { audioNotes as audioNotesApi } from "@/lib/api"
-
-interface Subject { id: string; name: string }
-interface Chapter { id: string; subject_id: string; title: string }
 
 export default function CapturePage() {
   const router = useRouter()
@@ -24,11 +21,7 @@ export default function CapturePage() {
   const [processedPreview, setProcessedPreview] = useState<string | null>(null)
   const [capturedFile, setCapturedFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
-  const [subjectsList, setSubjectsList] = useState<Subject[]>([])
-  const [chaptersList, setChaptersList] = useState<Chapter[]>([])
-  const [selectedSubject, setSelectedSubject] = useState("")
-  const [selectedChapter, setSelectedChapter] = useState("")
-  const [autoDetect, setAutoDetect] = useState(true)
+  const [subjectsList, setSubjectsList] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [queued, setQueued] = useState(false)
   const [assignedChapter, setAssignedChapter] = useState<string | null>(null)
@@ -37,6 +30,8 @@ export default function CapturePage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false)
+  const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -47,16 +42,6 @@ export default function CapturePage() {
         router.push("/auth")
       }
     })
-  }, [])
-
-  useEffect(() => {
-    if (selectedSubject) {
-      chaptersApi.list(selectedSubject).then(setChaptersList)
-    } else {
-      setChaptersList([])
-    }
-    setSelectedChapter("")
-  }, [selectedSubject])
 
   async function handleCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -109,7 +94,6 @@ export default function CapturePage() {
 
   async function handleSubmit() {
     if (!capturedFile || !user) return
-    if (!selectedSubject) { alert("Please select a subject first"); return }
     setUploading(true)
 
     try {
@@ -117,17 +101,8 @@ export default function CapturePage() {
         ? new File([preprocessResult.processedBlob], capturedFile.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
         : capturedFile
 
-      let chapterId = autoDetect ? undefined : selectedChapter
-      const subjectId = selectedSubject
-
-      if (!autoDetect && !chapterId && subjectId) {
-        alert("Select a chapter or enable auto-detect")
-        setUploading(false)
-        return
-      }
-
       if (!online) {
-        await queueCapture(fileToUpload, autoDetect ? subjectId : undefined, chapterId)
+        await queueCapture(fileToUpload, undefined, undefined)
         setQueued(true)
         setUploading(false)
         return
@@ -136,8 +111,6 @@ export default function CapturePage() {
       const { url } = await capturesApi.uploadImage(fileToUpload)
 
       const cap = await capturesApi.create({
-        chapter_id: chapterId,
-        subject_id: autoDetect ? subjectId : undefined,
         image_url: url,
       })
 
@@ -156,12 +129,29 @@ export default function CapturePage() {
         }
       }
 
-      setQueued(true)
+      setPendingCaptureId(cap.id)
+      setShowSubjectPicker(true)
     } catch (e) {
       alert("Upload failed: " + (e as Error).message)
     } finally {
       setUploading(false)
     }
+  }
+
+  async function assignSubject(subjectId: string) {
+    if (!pendingCaptureId) return
+    try {
+      await fetch(`/api/proxy?path=/captures/${pendingCaptureId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject_id: subjectId }),
+      })
+    } catch (e) {
+      console.warn("Subject assignment failed:", e)
+    }
+    setShowSubjectPicker(false)
+    setPendingCaptureId(null)
+    setQueued(true)
   }
 
   function reset() {
@@ -171,7 +161,8 @@ export default function CapturePage() {
     setQueued(false)
     setPreprocessResult(null)
     setAssignedChapter(null)
-    setAutoDetect(true)
+    setShowSubjectPicker(false)
+    setPendingCaptureId(null)
     if (fileRef.current) fileRef.current.value = ""
   }
 
@@ -189,47 +180,6 @@ export default function CapturePage() {
           </button>
         </div>
       </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <label style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>Subject</label>
-        <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)}
-          style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none" }}>
-          <option value="">Select subject...</option>
-          {subjectsList.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      </div>
-
-      {selectedSubject && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: 13, color: "#909090", fontFamily: "var(--font-mono)" }}>Chapter</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: "#909090", fontFamily: "var(--font-mono)" }}>
-              <input type="checkbox" checked={autoDetect} onChange={() => setAutoDetect(!autoDetect)} style={{ accentColor: "#3b82f6" }} />
-              Auto-detect
-            </label>
-          </div>
-          {autoDetect ? (
-            <div style={{ padding: "12px 16px", borderRadius: 10, border: "1px dashed #2a2a2a", background: "#1a1a1a", fontSize: 14, color: "#606060" }}>
-              Chapter will be detected from slide content after capture
-            </div>
-          ) : (
-            <>
-              <select value={selectedChapter} onChange={(e) => setSelectedChapter(e.target.value)}
-                style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none" }}>
-                <option value="">Existing...</option>
-                {chaptersList.map((ch) => <option key={ch.id} value={ch.id}>{ch.title}</option>)}
-              </select>
-              <input type="text" placeholder="New chapter name..." value={selectedChapter === "__new__" ? "" : ""} onChange={(e) => {
-                if (e.target.value) { setSelectedChapter("__new__"); /* new chapter - handled at submit */ }
-              }}
-                style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none" }} />
-            </>
-          )}
-          {assignedChapter && (
-            <p style={{ fontSize: 12, color: "#3b82f6", fontFamily: "var(--font-mono)" }}>&rarr; {assignedChapter}</p>
-          )}
-        </div>
-      )}
 
       <div onClick={() => !rawPreview && fileRef.current?.click()}
         style={{ flex: 1, borderRadius: 16, overflow: "hidden", background: "#1a1a1a", border: "2px dashed #2a2a2a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, cursor: rawPreview ? "default" : "pointer", position: "relative" }}>
@@ -326,6 +276,30 @@ export default function CapturePage() {
           <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
             <button onClick={reset} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #2a2a2a", fontSize: 13 }}>Capture another</button>
             <button onClick={() => router.push("/dashboard")} style={{ padding: "8px 16px", borderRadius: 8, background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 500 }}>Dashboard</button>
+          </div>
+        </div>
+      )}
+
+      {showSubjectPicker && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
+          <div style={{ background: "#1a1a1a", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360, border: "1px solid #2a2a2a" }}>
+            <h3 style={{ color: "#e8e8e8", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Assign to subject</h3>
+            <p style={{ color: "#606060", fontSize: 13, marginBottom: 16 }}>Which subject is this slide for?</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 240, overflowY: "auto" }}>
+              {subjectsList.map((s) => (
+                <button key={s.id} onClick={() => assignSubject(s.id)}
+                  style={{ padding: "14px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#222", color: "#e8e8e8", fontSize: 15, fontWeight: 500, textAlign: "left", cursor: "pointer" }}>
+                  {s.name}
+                </button>
+              ))}
+              {subjectsList.length === 0 && (
+                <p style={{ color: "#606060", fontSize: 13, textAlign: "center", padding: 12 }}>No subjects yet. Create one from the dashboard.</p>
+              )}
+            </div>
+            <button onClick={() => { setShowSubjectPicker(false); setPendingCaptureId(null); setQueued(true); }}
+              style={{ width: "100%", marginTop: 12, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", fontSize: 14, color: "#909090", background: "transparent" }}>
+              Skip for now
+            </button>
           </div>
         </div>
       )}
