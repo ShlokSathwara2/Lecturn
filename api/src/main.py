@@ -13,12 +13,13 @@ origins = os.getenv("ALLOWED_ORIGINS", "")
 if origins:
     origin_list = [o.strip() for o in origins.split(",") if o.strip()]
 else:
-    origin_list = [os.getenv("NEXT_PUBLIC_APP_URL", "http://localhost:3000")]
+    app_url = os.getenv("NEXT_PUBLIC_APP_URL", "")
+    origin_list = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origin_list,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
