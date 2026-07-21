@@ -66,7 +66,6 @@ CREATE INDEX IF NOT EXISTS idx_captures_chapter ON captures(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_captures_embedding ON captures USING ivfflat (embedding vector_cosine_ops)
   WITH (lists = 100);
 CREATE INDEX IF NOT EXISTS idx_captures_image_hash ON captures(image_hash);
-  WITH (lists = 100);
 CREATE INDEX IF NOT EXISTS idx_api_usage_date ON api_usage_log(provider, date);
 
 -- 6. Semantic search function

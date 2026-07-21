@@ -41,16 +41,18 @@ export default function AuthPage() {
     }
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) {
         setError(error.message)
+      } else if (data.session) {
+        router.push("/dashboard")
       } else {
-        setSuccess("Account created! Check your email for a confirmation link, or try signing in.")
+        setSuccess("Account created! Check your email for a confirmation link.")
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        setError(error.message)
+        setError("Invalid email or password. If you signed up with magic link before, use 'Forgot password' to set a password.")
       } else {
         router.push("/dashboard")
       }
@@ -160,11 +162,23 @@ export default function AuthPage() {
           </form>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-            style={{ marginTop: 20, textAlign: "center" }}>
-            <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); setSuccess("") }}
+            style={{ marginTop: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <button type="button" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); setSuccess("") }}
               style={{ background: "transparent", border: "none", color: "#3b82f6", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-mono)" }}>
               {mode === "signin" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
+            {mode === "signin" && (
+              <button type="button" onClick={async () => {
+                if (!email) { setError("Enter your email first"); return }
+                setLoading(true); setError("")
+                const { error } = await supabase.auth.resetPasswordForEmail(email)
+                setLoading(false)
+                if (error) setError(error.message)
+                else setSuccess("Password reset link sent to your email")
+              }} style={{ background: "transparent", border: "none", color: "#606060", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-mono)" }}>
+                Forgot password?
+              </button>
+            )}
           </motion.div>
         </div>
 
