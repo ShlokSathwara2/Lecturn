@@ -9,7 +9,7 @@ export default function PWARegister() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js?v=2")
+      navigator.serviceWorker.register("/sw.js?v=2").catch(() => {})
     }
 
     const handler = (e: Event) => {
