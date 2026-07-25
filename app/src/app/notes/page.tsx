@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
+import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, aiNotes } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
 
@@ -78,6 +78,7 @@ export default function NotesPage() {
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
   const [chaptersBySubject, setChaptersBySubject] = useState<Record<string, Chapter[]>>({})
   const [chapterNotesCount, setChapterNotesCount] = useState<Record<string, number>>({})
+  const [aiNotesExist, setAiNotesExist] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -114,6 +115,13 @@ export default function NotesPage() {
           counts[ch.id] = caps.length
         }
         setChapterNotesCount((prev) => ({ ...prev, ...counts }))
+
+        try {
+          await aiNotes.get(subjectId)
+          setAiNotesExist((prev) => ({ ...prev, [subjectId]: true }))
+        } catch {
+          setAiNotesExist((prev) => ({ ...prev, [subjectId]: false }))
+        }
       } catch {}
     }
   }
@@ -216,7 +224,27 @@ export default function NotesPage() {
                     transition={{ duration: 0.3, ease: "easeOut" }}
                     style={{ overflow: "hidden" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, paddingTop: 4 }}>
-                      {(chaptersBySubject[s.id] || []).length === 0 && (
+
+                      {aiNotesExist[s.id] && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          onClick={() => router.push(`/notes/ai/${s.id}`)}
+                          whileHover={{ borderColor: "rgba(139,92,246,0.3)", background: "rgba(139,92,246,0.08)" }}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 8, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", cursor: "pointer", transition: "all 0.2s ease" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 16 }}>&#x2728;</span>
+                            <div>
+                              <p style={{ fontSize: 14, fontWeight: 600, color: "#8b5cf6" }}>AI Generated Notes</p>
+                              <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                                Combined study guide
+                              </p>
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 13, color: "#8b5cf6" }}>&rarr;</span>
+                        </motion.div>
+                      )}
+
+                      {(chaptersBySubject[s.id] || []).length === 0 && !aiNotesExist[s.id] && (
                         <p style={{ fontSize: 13, color: "#606060", padding: "8px 0" }}>No chapters yet.</p>
                       )}
                       {(chaptersBySubject[s.id] || []).map((ch, i) => (
