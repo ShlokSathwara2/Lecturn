@@ -7,14 +7,34 @@ router = APIRouter(prefix="/captures", tags=["captures"])
 BUCKET_NAME = "slide-images"
 
 @router.get("")
-async def list_captures(chapter_id: str = ""):
-    query = supabase.table("captures").select("*").order("date_taken")
+async def list_captures(chapter_id: str = "", user_id: str = ""):
     if chapter_id:
-        query = query.eq("chapter_id", chapter_id)
-    return query.execute().data
+        query = supabase.table("captures").select("*").eq("chapter_id", chapter_id).order("date_taken")
+        return query.execute().data
+    if user_id:
+        subject_ids = [s["id"] for s in supabase.table("subjects").select("id").eq("user_id", user_id).execute().data]
+        if not subject_ids:
+            return []
+        chapter_ids = [c["id"] for c in supabase.table("chapters").select("id").in_("subject_id", subject_ids).execute().data]
+        if not chapter_ids:
+            return []
+        query = supabase.table("captures").select("*").in_("chapter_id", chapter_ids).order("date_taken", desc=True)
+        return query.execute().data
+    return []
 
 @router.get("/unassigned")
-async def list_unassigned_captures():
+async def list_unassigned_captures(user_id: str = ""):
+    if user_id:
+        subject_ids = [s["id"] for s in supabase.table("subjects").select("id").eq("user_id", user_id).execute().data]
+        if not subject_ids:
+            data = supabase.table("captures").select("*").is_("subject_id", "null").order("date_taken", desc=True).execute()
+            return data.data
+        chapter_ids = [c["id"] for c in supabase.table("chapters").select("id").in_("subject_id", subject_ids).execute().data]
+        if chapter_ids:
+            data = supabase.table("captures").select("*").is_("subject_id", "null").not_.in_("chapter_id", chapter_ids).order("date_taken", desc=True).execute()
+        else:
+            data = supabase.table("captures").select("*").is_("subject_id", "null").order("date_taken", desc=True).execute()
+        return data.data
     data = supabase.table("captures").select("*").is_("subject_id", "null").order("date_taken", desc=True).execute()
     return data.data
 

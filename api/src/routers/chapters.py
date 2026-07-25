@@ -38,11 +38,17 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
 router = APIRouter(prefix="/chapters", tags=["chapters"])
 
 @router.get("")
-async def list_chapters(subject_id: str = ""):
-    query = supabase.table("chapters").select("*").order("created_at")
+async def list_chapters(subject_id: str = "", user_id: str = ""):
     if subject_id:
-        query = query.eq("subject_id", subject_id)
-    return query.execute().data
+        query = supabase.table("chapters").select("*").eq("subject_id", subject_id).order("created_at")
+        return query.execute().data
+    if user_id:
+        subject_ids = [s["id"] for s in supabase.table("subjects").select("id").eq("user_id", user_id).execute().data]
+        if not subject_ids:
+            return []
+        query = supabase.table("chapters").select("*").in_("subject_id", subject_ids).order("created_at", desc=True)
+        return query.execute().data
+    return []
 
 @router.post("", status_code=201)
 async def create_chapter(body: ChapterCreate):

@@ -21,12 +21,19 @@ export const subjects = {
     request<any>(`/subjects/${id}`),
   create: (data: { name: string; user_id: string }) =>
     request<any>("/subjects", { method: "POST", body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request<any>(`/subjects/${id}`, { method: "DELETE" }),
 }
 
 // Chapters
 export const chapters = {
-  list: (subjectId?: string) =>
-    request<any[]>(`/chapters${subjectId ? `?subject_id=${subjectId}` : ""}`),
+  list: (subjectId?: string, userId?: string) => {
+    const params = new URLSearchParams()
+    if (subjectId) params.set("subject_id", subjectId)
+    if (userId) params.set("user_id", userId)
+    const qs = params.toString()
+    return request<any[]>(`/chapters${qs ? `?${qs}` : ""}`)
+  },
   get: (id: string) =>
     request<any>(`/chapters/${id}`),
   create: (data: { subject_id: string; title: string }) =>
@@ -47,8 +54,13 @@ export const processing = {
 
 // Captures
 export const captures = {
-  list: (chapterId?: string) =>
-    request<any[]>(`/captures${chapterId ? `?chapter_id=${chapterId}` : ""}`),
+  list: (chapterId?: string, userId?: string) => {
+    const params = new URLSearchParams()
+    if (chapterId) params.set("chapter_id", chapterId)
+    if (userId) params.set("user_id", userId)
+    const qs = params.toString()
+    return request<any[]>(`/captures${qs ? `?${qs}` : ""}`)
+  },
   get: (id: string) =>
     request<any>(`/captures/${id}`),
   create: (data: { chapter_id?: string; subject_id?: string; image_url?: string; raw_text?: string }) =>
@@ -57,8 +69,8 @@ export const captures = {
     request<any>(`/captures/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<any>(`/captures/${id}`, { method: "DELETE" }),
-  unassigned: () =>
-    request<any[]>("/captures/unassigned"),
+  unassigned: (userId?: string) =>
+    request<any[]>(`/captures/unassigned${userId ? `?user_id=${userId}` : ""}`),
   search: async (params: { q?: string; subject_id?: string; chapter_id?: string; ai_status?: string; date_from?: string; date_to?: string; needs_review?: boolean }) => {
     const query = new URLSearchParams()
     if (params.q) query.set("q", params.q)
@@ -101,11 +113,6 @@ export const audioNotes = {
     if (!res.ok) throw new Error("Audio upload failed")
     return res.json() as Promise<any>
   },
-}
-
-export const usageLog = {
-  summary: (days: number = 14) =>
-    request<{ days: string[]; daily: Record<string, Record<string, number>>; providers: any[]; today_providers: string[]; today_total: number }>(`/usage-log/summary?days=${days}`),
 }
 
 export const quiz = {

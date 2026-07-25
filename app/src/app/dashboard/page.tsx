@@ -1,14 +1,137 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
 import { getQueue, removeFromQueue } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
+interface Capture { id: string; chapter_id: string; subject_id?: string; date_taken: string; image_url?: string; raw_text?: string; ai_status: string; status: string }
+
+function ParticleField() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const c = canvasRef.current
+    if (!c) return
+    const ctx = c.getContext("2d")
+    if (!ctx) return
+    let w = c.width = innerWidth
+    let h = c.height = innerHeight
+    const dots: { x: number; y: number; vx: number; vy: number; r: number }[] = []
+    for (let i = 0; i < 40; i++) {
+      dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2, r: Math.random() * 1.2 + 0.4 })
+    }
+    let id: number
+    function draw() {
+      ctx!.fillStyle = "rgba(18,18,18,0.12)"
+      ctx!.fillRect(0, 0, w, h)
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy
+        if (d.x < 0 || d.x > w) d.vx *= -1
+        if (d.y < 0 || d.y > h) d.vy *= -1
+        ctx!.beginPath()
+        ctx!.arc(d.x, d.y, d.r, 0, Math.PI * 2)
+        ctx!.fillStyle = "rgba(59,130,246,0.25)"
+        ctx!.fill()
+      }
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 120) {
+            ctx!.beginPath()
+            ctx!.moveTo(dots[i].x, dots[i].y)
+            ctx!.lineTo(dots[j].x, dots[j].y)
+            ctx!.strokeStyle = `rgba(59,130,246,${0.06 * (1 - dist / 120)})`
+            ctx!.lineWidth = 0.4
+            ctx!.stroke()
+          }
+        }
+      }
+      id = requestAnimationFrame(draw)
+    }
+    draw()
+    const ro = () => { w = c.width = innerWidth; h = c.height = innerHeight }
+    addEventListener("resize", ro)
+    return () => { cancelAnimationFrame(id); removeEventListener("resize", ro) }
+  }, [])
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />
+}
+
+function AnimatedOrbs() {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+      <motion.div animate={{ x: [0, 30, -20, 0], y: [0, -40, 20, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", top: "10%", left: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)" }} />
+      <motion.div animate={{ x: [0, -40, 30, 0], y: [0, 50, -30, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", bottom: "15%", right: "8%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)" }} />
+      <motion.div animate={{ x: [0, 20, -30, 0], y: [0, -30, 40, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", top: "50%", left: "60%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(5,150,105,0.04) 0%, transparent 70%)" }} />
+    </div>
+  )
+}
+
+function DonutChart({ withNotes, withoutNotes }: { withNotes: number; withoutNotes: number }) {
+  const total = withNotes + withoutNotes
+  if (total === 0) return null
+  const radius = 60
+  const strokeWidth = 14
+  const circumference = 2 * Math.PI * radius
+  const withPct = withNotes / total
+  const withoutPct = withoutNotes / total
+  const withDash = withPct * circumference
+  const withoutDash = withoutPct * circumference
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "16px 0" }}>
+      <div style={{ position: "relative", width: 152, height: 152, flexShrink: 0 }}>
+        <svg width="152" height="152" viewBox="0 0 152 152" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="76" cy="76" r={radius} fill="none" stroke="#2a2a2a" strokeWidth={strokeWidth} />
+          {withNotes > 0 && (
+            <motion.circle cx="76" cy="76" r={radius} fill="none" stroke="#3b82f6" strokeWidth={strokeWidth}
+              strokeDasharray={`${withDash} ${circumference - withDash}`} strokeLinecap="round"
+              initial={{ strokeDashoffset: circumference }} animate={{ strokeDashoffset: 0 }}
+              transition={{ duration: 1.2, ease: "easeOut" }} />
+          )}
+          {withoutNotes > 0 && (
+            <motion.circle cx="76" cy="76" r={radius} fill="none" stroke="#8b5cf6" strokeWidth={strokeWidth}
+              strokeDasharray={`${withoutDash} ${circumference - withoutDash}`}
+              strokeDashoffset={-withDash} strokeLinecap="round"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }} />
+          )}
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 24, fontWeight: 700, color: "#e8e8e8" }}>{total}</span>
+          <span style={{ fontSize: 10, color: "#606060", fontFamily: "var(--font-mono)" }}>SUBJECTS</span>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "#909090" }}>{withNotes} with notes</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#8b5cf6", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "#909090" }}>{withoutNotes} without notes</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+}
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -17,7 +140,9 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
   const [chaptersBySubject, setChaptersBySubject] = useState<Record<string, Chapter[]>>({})
+  const [chaptersCountBySubject, setChaptersCountBySubject] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState<string>("")
 
   const online = useOnlineStatus()
   const [pendingCount, setPendingCount] = useState(0)
@@ -25,6 +150,10 @@ export default function DashboardPage() {
 
   const [newSubjectName, setNewSubjectName] = useState("")
   const [addingSubject, setAddingSubject] = useState(false)
+
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const [subjectsNotesMap, setSubjectsNotesMap] = useState<Record<string, number>>({})
 
   const refreshQueue = useCallback(async () => {
     try {
@@ -60,6 +189,7 @@ export default function DashboardPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push("/auth"); return }
+      setUserId(data.user.id)
       loadSubjects(data.user.id)
       refreshQueue()
     })
@@ -69,11 +199,26 @@ export default function DashboardPage() {
     if (online && pendingCount > 0) syncQueue()
   }, [online])
 
-  async function loadSubjects(userId?: string) {
+  async function loadSubjects(uid?: string) {
     setLoading(true)
     try {
-      const list = await subjectsApi.list(userId || "")
+      const list = await subjectsApi.list(uid || "")
       setSubjects(list)
+
+      const notesMap: Record<string, number> = {}
+      const countMap: Record<string, number> = {}
+      for (const s of list) {
+        const chs = await chaptersApi.list(s.id)
+        countMap[s.id] = chs.length
+        let noteCount = 0
+        for (const ch of chs) {
+          const caps = await capturesApi.list(ch.id)
+          noteCount += caps.length
+        }
+        notesMap[s.id] = noteCount
+      }
+      setChaptersCountBySubject(countMap)
+      setSubjectsNotesMap(notesMap)
     } catch {}
     setLoading(false)
   }
@@ -118,94 +263,179 @@ export default function DashboardPage() {
     }
   }
 
+  const filteredSubjects = subjects.filter((s) =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const subjectsWithNotes = filteredSubjects.filter((s) => (subjectsNotesMap[s.id] || 0) > 0).length
+  const subjectsWithoutNotes = filteredSubjects.length - subjectsWithNotes
+
   return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600 }}>Dashboard</h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#059669" : "#f59e0b", flexShrink: 0 }} />
-          <button onClick={() => router.push("/capture")} style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
-            Capture
-          </button>
-          <button onClick={() => router.push("/")} style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
-            Home
-          </button>
-        </div>
-      </div>
+    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }}>
+      <style>{`
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .gradient-text {
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6, #059669);
+          background-size: 200% 200%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: gradientShift 4s ease infinite;
+        }
+      `}</style>
 
-      {pendingCount > 0 && online && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#1a2a1a", border: "1px solid #059669" }}>
-          <p style={{ flex: 1, fontSize: 13, color: "#e8e8e8" }}>{pendingCount} capture{pendingCount !== 1 ? "s" : ""} waiting to sync</p>
-          <button onClick={syncQueue} disabled={syncing}
-            style={{ padding: "6px 14px", borderRadius: 8, background: "#059669", color: "#fff", fontSize: 12, fontWeight: 500, opacity: syncing ? 0.6 : 1 }}>
-            {syncing ? "Syncing..." : "Sync now"}
-          </button>
-        </div>
-      )}
+      <ParticleField />
+      <AnimatedOrbs />
 
-      {pendingCount > 0 && !online && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#2a2a1a", border: "1px solid #f59e0b" }}>
-          <p style={{ flex: 1, fontSize: 13, color: "#e8e8e8" }}>{pendingCount} capture{pendingCount !== 1 ? "s" : ""} queued — will sync when online</p>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8 }}>
-        <input value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} placeholder="New subject name..."
-          onKeyDown={(e) => e.key === "Enter" && addSubject()}
-          style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 15, color: "#e8e8e8", outline: "none" }} />
-        <button onClick={addSubject} disabled={!newSubjectName.trim() || addingSubject}
-          style={{ padding: "12px 20px", borderRadius: 10, background: newSubjectName.trim() ? "#3b82f6" : "#2a2a2a", color: "#fff", fontSize: 14, fontWeight: 500, opacity: addingSubject ? 0.6 : 1 }}>
-          {addingSubject ? "..." : "Add"}
-        </button>
-      </div>
-
-      {loading && (
-        <div style={{ textAlign: "center", padding: 32 }}>
-          <p style={{ fontSize: 14, color: "#909090" }}>Loading...</p>
-        </div>
-      )}
-
-      {!loading && subjects.length === 0 && (
-        <div style={{ textAlign: "center", padding: 32, border: "1px dashed #2a2a2a", borderRadius: 12 }}>
-          <p style={{ fontSize: 14, color: "#606060" }}>No subjects yet. Add one above.</p>
-        </div>
-      )}
-
-      {subjects.map((s) => (
-        <div key={s.id}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 10, background: expandedSubject === s.id ? "#1a2a3a" : "#1a1a1a", border: "1px solid #2a2a2a", cursor: "pointer" }}
-            onClick={() => toggleSubject(s.id)}>
-            <span style={{ fontSize: 14, color: expandedSubject === s.id ? "#3b82f6" : "#909090", transition: "transform 0.2s", transform: expandedSubject === s.id ? "rotate(90deg)" : "rotate(0deg)" }}>
-              &#9654;
-            </span>
-            <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#e8e8e8" }}>{s.name}</span>
-            <button onClick={(e) => { e.stopPropagation(); deleteSubject(s.id) }}
-              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, color: "#ef4444", border: "1px solid #ef4444", background: "transparent" }}>
-              Del
-            </button>
+      <div style={{ position: "relative", zIndex: 1, padding: 16, maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700 }}>
+            Dashboard<span className="gradient-text">.</span>
+          </h1>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#059669" : "#f59e0b", flexShrink: 0 }} />
+            <motion.button onClick={() => router.push("/capture")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(59,130,246,0.1)" }}>
+              Capture
+            </motion.button>
+            <motion.button onClick={() => router.push("/notes")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(139,92,246,0.1)" }}>
+              Notes
+            </motion.button>
+            <motion.button onClick={() => router.push("/")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a" }}>
+              Home
+            </motion.button>
           </div>
+        </motion.div>
 
-          {expandedSubject === s.id && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, marginTop: 4 }}>
-              {(chaptersBySubject[s.id] || []).length === 0 && (
-                <p style={{ fontSize: 13, color: "#606060", padding: "8px 0" }}>No chapters yet. Upload a slide and assign to this subject.</p>
-              )}
-              {(chaptersBySubject[s.id] || []).map((ch) => (
-                <div key={ch.id} onClick={() => router.push(`/notes/${ch.id}`)}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, background: "#1a1a1a", border: "1px solid #2a2a2a", cursor: "pointer" }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8" }}>{ch.title}</p>
-                    <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
-                      {new Date(ch.created_at).toLocaleDateString()}
-                    </p>
+        {pendingCount > 0 && online && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)" }}>
+            <p style={{ flex: 1, fontSize: 13, color: "#e8e8e8" }}>{pendingCount} capture{pendingCount !== 1 ? "s" : ""} waiting to sync</p>
+            <button onClick={syncQueue} disabled={syncing}
+              style={{ padding: "6px 14px", borderRadius: 8, background: "#059669", color: "#fff", fontSize: 12, fontWeight: 500, opacity: syncing ? 0.6 : 1 }}>
+              {syncing ? "Syncing..." : "Sync now"}
+            </button>
+          </motion.div>
+        )}
+
+        {pendingCount > 0 && !online && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}>
+            <p style={{ flex: 1, fontSize: 13, color: "#e8e8e8" }}>{pendingCount} capture{pendingCount !== 1 ? "s" : ""} queued — will sync when online</p>
+          </motion.div>
+        )}
+
+        {filteredSubjects.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            style={{ padding: "16px 20px", borderRadius: 16, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(12px)", border: "1px solid #2a2a2a" }}>
+            <DonutChart withNotes={subjectsWithNotes} withoutNotes={subjectsWithoutNotes} />
+          </motion.div>
+        )}
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          style={{ display: "flex", gap: 8 }}>
+          <input value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)}
+            placeholder="New subject name..."
+            onKeyDown={(e) => e.key === "Enter" && addSubject()}
+            style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", fontSize: 15, color: "#e8e8e8", outline: "none" }} />
+          <motion.button onClick={addSubject} disabled={!newSubjectName.trim() || addingSubject}
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            style={{ padding: "12px 20px", borderRadius: 10, background: newSubjectName.trim() ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "#2a2a2a", color: "#fff", fontSize: 14, fontWeight: 500, opacity: addingSubject ? 0.6 : 1 }}>
+            {addingSubject ? "..." : "Add"}
+          </motion.button>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          style={{ position: "relative" }}>
+          <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search subjects..."
+            style={{ width: "100%", padding: "12px 16px 12px 40px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", fontSize: 14, color: "#e8e8e8", outline: "none" }} />
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#606060" }}>&#128269;</span>
+        </motion.div>
+
+        {loading && (
+          <div style={{ textAlign: "center", padding: 32 }}>
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              style={{ display: "inline-block", fontSize: 20, color: "#3b82f6" }}>&#x21BB;</motion.div>
+            <p style={{ fontSize: 14, color: "#909090", marginTop: 8 }}>Loading...</p>
+          </div>
+        )}
+
+        {!loading && filteredSubjects.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{ textAlign: "center", padding: 32, border: "1px dashed #2a2a2a", borderRadius: 12 }}>
+            <p style={{ fontSize: 14, color: "#606060" }}>
+              {searchQuery ? "No subjects match your search." : "No subjects yet. Add one above."}
+            </p>
+          </motion.div>
+        )}
+
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filteredSubjects.map((s) => (
+            <motion.div key={s.id} variants={itemVariants}>
+              <motion.div
+                whileHover={{ borderColor: "rgba(59,130,246,0.3)" }}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 16px", borderRadius: 12, background: expandedSubject === s.id ? "rgba(59,130,246,0.08)" : "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid #2a2a2a", cursor: "pointer", transition: "all 0.2s ease" }}
+                onClick={() => toggleSubject(s.id)}>
+                <motion.span animate={{ rotate: expandedSubject === s.id ? 90 : 0 }} transition={{ duration: 0.2 }}
+                  style={{ fontSize: 12, color: expandedSubject === s.id ? "#3b82f6" : "#606060" }}>
+                  &#9654;
+                </motion.span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "#e8e8e8" }}>{s.name}</p>
+                  <div style={{ display: "flex", gap: 12, marginTop: 2 }}>
+                    <span style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)" }}>
+                      {chaptersCountBySubject[s.id] || 0} chapters
+                    </span>
+                    <span style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)" }}>
+                      {subjectsNotesMap[s.id] || 0} notes
+                    </span>
                   </div>
-                  <span style={{ fontSize: 13, color: "#909090" }}>&rarr;</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                <motion.button onClick={(e) => { e.stopPropagation(); deleteSubject(s.id) }}
+                  whileHover={{ scale: 1.1, backgroundColor: "rgba(239,68,68,0.15)" }}
+                  style={{ padding: "6px 10px", borderRadius: 6, fontSize: 12, color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", background: "transparent" }}>
+                  Del
+                </motion.button>
+              </motion.div>
+
+              <AnimatePresence>
+                {expandedSubject === s.id && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    style={{ overflow: "hidden" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, paddingTop: 4 }}>
+                      {(chaptersBySubject[s.id] || []).length === 0 && (
+                        <p style={{ fontSize: 13, color: "#606060", padding: "8px 0" }}>No chapters yet.</p>
+                      )}
+                      {(chaptersBySubject[s.id] || []).map((ch, i) => (
+                        <motion.div key={ch.id}
+                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                          onClick={() => router.push(`/notes/${ch.id}`)}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, background: "rgba(26,26,26,0.5)", border: "1px solid #2a2a2a", cursor: "pointer", transition: "all 0.2s ease" }}>
+                          <div>
+                            <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8" }}>{ch.title}</p>
+                            <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                              {new Date(ch.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span style={{ fontSize: 13, color: "#909090" }}>&rarr;</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
     </main>
   )
 }

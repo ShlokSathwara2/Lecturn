@@ -6,9 +6,9 @@ router = APIRouter(prefix="/subjects", tags=["subjects"])
 
 @router.get("")
 async def list_subjects(user_id: str = ""):
-    query = supabase.table("subjects").select("*").order("name")
-    if user_id:
-        query = query.eq("user_id", user_id)
+    if not user_id:
+        return []
+    query = supabase.table("subjects").select("*").eq("user_id", user_id).order("name")
     data = query.execute()
     return data.data
 
