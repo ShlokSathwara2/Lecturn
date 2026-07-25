@@ -14,16 +14,16 @@ const TABS = [
 ]
 
 const PILL_W = 48
+const PILL_H = 48
 
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const navRef = useRef<HTMLDivElement>(null)
-  const { color } = useAccent()
-  const [dragging, setDragging] = useState(false)
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
-  const [pillLeft, setPillLeft] = useState(0)
   const pillRef = useRef<HTMLDivElement>(null)
+  const { color } = useAccent()
+  const dragging = useRef(false)
+  const hoverIdx = useRef<number | null>(null)
   const rafRef = useRef<number>(0)
 
   const activeIdx = useMemo(
@@ -35,40 +35,77 @@ export default function BottomNav() {
   const g = useMemo(() => parseInt(color.slice(3, 5), 16), [color])
   const b = useMemo(() => parseInt(color.slice(5, 7), 16), [color])
 
-  const tabWidth = useCallback(() => {
+  function tabWidth() {
     const nav = navRef.current
     if (!nav) return 60
     return nav.getBoundingClientRect().width / TABS.length
-  }, [])
+  }
 
-  const centerOf = useCallback((idx: number) => {
+  function centerOf(idx: number) {
     return tabWidth() * idx + tabWidth() / 2 - PILL_W / 2
-  }, [tabWidth])
+  }
 
-  const idxFromX = useCallback((clientX: number) => {
+  function idxFromX(clientX: number) {
     const nav = navRef.current
     if (!nav) return 0
     const rect = nav.getBoundingClientRect()
     const relX = clientX - rect.left
     return Math.max(0, Math.min(TABS.length - 1, Math.floor(relX / tabWidth())))
-  }, [tabWidth])
+  }
+
+  function setPillPosition(left: number) {
+    const pill = pillRef.current
+    if (!pill) return
+    pill.style.left = `${left}px`
+  }
+
+  function setPillScale(scale: number) {
+    const pill = pillRef.current
+    if (!pill) return
+    pill.style.transform = `scale(${scale})`
+  }
+
+  function updateIconColors(idx: number | null) {
+    const nav = navRef.current
+    if (!nav) return
+    const icons = nav.querySelectorAll(".bottom-nav-icon")
+    const labels = nav.querySelectorAll(".bottom-nav-label")
+    icons.forEach((icon, i) => {
+      (icon as HTMLElement).style.color = idx === i ? color : "#888"
+    })
+    labels.forEach((label, i) => {
+      (label as HTMLElement).style.color = idx === i ? color : "#999"
+      ;(label as HTMLElement).style.opacity = idx === i ? "1" : "0.7"
+    })
+  }
 
   useEffect(() => {
-    if (!dragging) {
-      setPillLeft(centerOf(activeIdx))
-      setHoverIdx(null)
+    if (!dragging.current) {
+      setPillPosition(centerOf(activeIdx))
+      setPillScale(1)
+      updateIconColors(null)
     }
-  }, [activeIdx, dragging, centerOf])
+  }, [activeIdx, color])
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType === "mouse" && e.button !== 0) return
-    setDragging(true)
-    setHoverIdx(idxFromX(e.clientX))
-    setPillLeft(centerOf(idxFromX(e.clientX)))
+    dragging.current = true
+    const idx = idxFromX(e.clientX)
+    hoverIdx.current = idx
+    setPillPosition(centerOf(idx))
+    setPillScale(1.18)
+    updateIconColors(idx)
+
+    const pill = pillRef.current
+    if (pill) {
+      pill.style.transition = "none"
+      pill.style.background = `rgba(${r}, ${g}, ${b}, 0.22)`
+      pill.style.boxShadow = `0 4px 20px rgba(${r}, ${g}, ${b}, 0.25), inset 0 1px 0 rgba(255,255,255,0.9)`
+    }
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!dragging) return
+    if (!dragging.current) return
     cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(() => {
       const nav = navRef.current
@@ -76,37 +113,34 @@ export default function BottomNav() {
       const rect = nav.getBoundingClientRect()
       const halfDrag = PILL_W / 2 + 8
       const clamped = Math.max(rect.left + halfDrag, Math.min(rect.right - halfDrag, e.clientX))
-      setPillLeft(clamped - rect.left - PILL_W / 2)
-      setHoverIdx(idxFromX(e.clientX))
+      setPillPosition(clamped - rect.left - PILL_W / 2)
+
+      const idx = idxFromX(e.clientX)
+      if (idx !== hoverIdx.current) {
+        hoverIdx.current = idx
+        updateIconColors(idx)
+      }
     })
   }
 
   function onPointerUp(e: React.PointerEvent) {
-    if (!dragging) return
-    setDragging(false)
+    if (!dragging.current) return
+    dragging.current = false
     const resolved = idxFromX(e.clientX)
-    setPillLeft(centerOf(resolved))
-    setHoverIdx(null)
+    hoverIdx.current = null
+
+    const pill = pillRef.current
+    if (pill) {
+      pill.style.transition = "left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease"
+      pill.style.background = `rgba(${r}, ${g}, ${b}, 0.12)`
+      pill.style.boxShadow = `0 2px 12px rgba(${r}, ${g}, ${b}, 0.12), inset 0 1px 0 rgba(255,255,255,0.8)`
+    }
+
+    setPillPosition(centerOf(resolved))
+    setPillScale(1)
+    updateIconColors(null)
     router.push(TABS[resolved].path)
   }
-
-  const highlightIdx = dragging ? hoverIdx ?? activeIdx : activeIdx
-
-  const pillStyle = useMemo(() => ({
-    position: "absolute" as const,
-    top: 4,
-    bottom: 4,
-    width: PILL_W,
-    borderRadius: 24,
-    background: dragging
-      ? `rgba(${r}, ${g}, ${b}, 0.22)`
-      : `rgba(${r}, ${g}, ${b}, 0.12)`,
-    boxShadow: `0 2px 12px rgba(${r}, ${g}, ${b}, 0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
-    border: `1px solid rgba(${r}, ${g}, ${b}, 0.15)`,
-    pointerEvents: "none" as const,
-    transition: dragging ? "none" : "left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
-    willChange: "left",
-  }), [r, g, b, dragging])
 
   return (
     <nav
@@ -115,7 +149,19 @@ export default function BottomNav() {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={() => { setDragging(false); setHoverIdx(null) }}
+      onPointerCancel={() => {
+        dragging.current = false
+        hoverIdx.current = null
+        setPillPosition(centerOf(activeIdx))
+        setPillScale(1)
+        updateIconColors(null)
+        const pill = pillRef.current
+        if (pill) {
+          pill.style.transition = "left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease"
+          pill.style.background = `rgba(${r}, ${g}, ${b}, 0.12)`
+          pill.style.boxShadow = `0 2px 12px rgba(${r}, ${g}, ${b}, 0.12), inset 0 1px 0 rgba(255,255,255,0.8)`
+        }
+      }}
       style={{
         background: `rgba(${r}, ${g}, ${b}, 0.08)`,
         borderColor: `rgba(${r}, ${g}, ${b}, 0.12)`,
@@ -123,38 +169,36 @@ export default function BottomNav() {
         touchAction: "none",
       }}
     >
-      <div ref={pillRef} className="nav-active-pill" style={pillStyle} />
+      <div
+        ref={pillRef}
+        className="nav-active-pill"
+        style={{
+          position: "absolute",
+          top: 4,
+          bottom: 4,
+          width: PILL_W,
+          borderRadius: 24,
+          background: `rgba(${r}, ${g}, ${b}, 0.12)`,
+          boxShadow: `0 2px 12px rgba(${r}, ${g}, ${b}, 0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
+          border: `1px solid rgba(${r}, ${g}, ${b}, 0.15)`,
+          pointerEvents: "none",
+          willChange: "left, transform",
+          transition: "left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}
+      />
 
-      {TABS.map((tab, i) => {
-        const isHighlighted = highlightIdx === i
-        return (
-          <Link key={tab.path} href={tab.path}
-            style={{ flex: 1, display: "flex", justifyContent: "center", textDecoration: "none", position: "relative", zIndex: 1 }}
-            onClick={(e) => { if (dragging) e.preventDefault() }}>
-            <div className="bottom-nav-item-inner">
-              <div
-                className="bottom-nav-icon"
-                style={{
-                  color: isHighlighted ? color : "#888",
-                  transition: "color 0.15s ease",
-                }}
-              >
-                <tab.icon />
-              </div>
-              <span
-                className="bottom-nav-label"
-                style={{
-                  color: isHighlighted ? color : "#999",
-                  opacity: isHighlighted ? 1 : 0.7,
-                  transition: "color 0.15s ease, opacity 0.15s ease",
-                }}
-              >
-                {tab.label}
-              </span>
+      {TABS.map((tab, i) => (
+        <Link key={tab.path} href={tab.path}
+          style={{ flex: 1, display: "flex", justifyContent: "center", textDecoration: "none", position: "relative", zIndex: 1 }}
+          onClick={(e) => { if (dragging.current) e.preventDefault() }}>
+          <div className="bottom-nav-item-inner">
+            <div className="bottom-nav-icon">
+              <tab.icon />
             </div>
-          </Link>
-        )
-      })}
+            <span className="bottom-nav-label">{tab.label}</span>
+          </div>
+        </Link>
+      ))}
     </nav>
   )
 }
