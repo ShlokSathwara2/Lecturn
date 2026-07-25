@@ -192,7 +192,7 @@ export default function Home() {
       <section style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "24px", position: "relative", zIndex: 1, textAlign: "center" }}>
         <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ maxWidth: 640 }}>
           <motion.div variants={itemVariants} style={{ marginBottom: 24 }}>
-            <img src="/logo.svg" alt="Lecturn" style={{ width: 80, height: 80, margin: "0 auto" }} />
+            <img src="/icon-192.png" alt="Lecturn" style={{ width: 80, height: 80, margin: "0 auto", borderRadius: 16 }} />
           </motion.div>
           <motion.div variants={itemVariants} style={{ fontSize: 14, fontFamily: "var(--font-mono)", color: "#3b82f6", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 16 }}>
             AI-Powered Lecture Notes
@@ -295,7 +295,7 @@ export default function Home() {
       <footer style={{ padding: "32px 24px", position: "relative", zIndex: 1, borderTop: "1px solid #1a1a1a" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src="/logo.svg" alt="" style={{ width: 24, height: 24 }} />
+            <img src="/icon-48.png" alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
             <p style={{ fontSize: 13, color: "#606060", fontFamily: "var(--font-mono)" }}>Lecturn &mdash; AI Lecture Notes</p>
           </div>
           <button onClick={() => router.push("/auth")} style={{ fontSize: 13, color: "#909090", padding: "8px 16px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", cursor: "pointer" }}>
