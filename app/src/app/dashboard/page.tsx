@@ -397,35 +397,6 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {!loading && unassignedCaptures.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <p style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#f59e0b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-              Unassigned ({unassignedCaptures.length})
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {unassignedCaptures.map((cap, i) => (
-                <motion.div key={cap.id}
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  onClick={() => router.push(`/capture/${cap.id}`)}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(245,158,11,0.2)", cursor: "pointer" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {getCaptureLabel(cap)}
-                    </p>
-                    <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
-                      {new Date(cap.date_taken).toLocaleDateString()} &middot; {cap.ai_status === "auto_generated" ? "auto generated" : "not generated"}
-                    </p>
-                  </div>
-                  <motion.button onClick={(e) => { e.stopPropagation(); openAssign(cap.id) }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 500, flexShrink: 0, whiteSpace: "nowrap", position: "relative", zIndex: 2 }}>
-                    Assign
-                  </motion.button>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
         {filteredSubjects.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             style={{ padding: "16px 20px", borderRadius: 16, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(12px)", border: "1px solid #2a2a2a" }}>
@@ -530,6 +501,35 @@ export default function DashboardPage() {
             </motion.div>
           ))}
         </motion.div>
+
+        {!loading && unassignedCaptures.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <p style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#f59e0b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+              Unassigned ({unassignedCaptures.length})
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {unassignedCaptures.map((cap, i) => (
+                <motion.div key={cap.id}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  onClick={() => router.push(`/capture/${cap.id}`)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(245,158,11,0.2)", cursor: "pointer" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {getCaptureLabel(cap)}
+                    </p>
+                    <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                      {new Date(cap.date_taken).toLocaleDateString()} &middot; {cap.ai_status === "auto_generated" ? "auto generated" : "not generated"}
+                    </p>
+                  </div>
+                  <motion.button onClick={(e) => { e.stopPropagation(); openAssign(cap.id) }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 500, flexShrink: 0, whiteSpace: "nowrap", position: "relative", zIndex: 2 }}>
+                    Assign
+                  </motion.button>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <AnimatePresence>

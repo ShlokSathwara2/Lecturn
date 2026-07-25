@@ -1,7 +1,8 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useRef, useState, useCallback, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useAccent } from "@/lib/AccentContext"
 
@@ -15,40 +16,94 @@ const TABS = [
 
 export default function BottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const navRef = useRef<HTMLDivElement>(null)
   const { color } = useAccent()
+  const [flowX, setFlowX] = useState<number | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [snapTo, setSnapTo] = useState<number | null>(null)
 
   const r = parseInt(color.slice(1, 3), 16)
   const g = parseInt(color.slice(3, 5), 16)
   const b = parseInt(color.slice(5, 7), 16)
 
+  const activeIdx = TABS.findIndex((t) => pathname === t.path || pathname.startsWith(t.path + "/"))
+
+  function getTabX(idx: number) {
+    if (!navRef.current) return 0
+    const navRect = navRef.current.getBoundingClientRect()
+    const tabWidth = navRect.width / TABS.length
+    return navRect.left + tabWidth * idx + tabWidth / 2
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    if (e.pointerType === "mouse" && e.button !== 0) return
+    setDragging(true)
+    setFlowX(e.clientX)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!dragging) return
+    setFlowX(e.clientX)
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    if (!dragging) return
+    setDragging(false)
+
+    const navRect = navRef.current?.getBoundingClientRect()
+    if (!navRect) return
+    const relX = e.clientX - navRect.left
+    const tabWidth = navRect.width / TABS.length
+    const idx = Math.floor(relX / tabWidth)
+    const clamped = Math.max(0, Math.min(TABS.length - 1, idx))
+
+    setSnapTo(clamped)
+    router.push(TABS[clamped].path)
+    setTimeout(() => setSnapTo(null), 300)
+  }
+
+  const highlightIdx = snapTo !== null ? snapTo : activeIdx
+
   return (
     <motion.nav
+      ref={navRef}
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.3, type: "spring", stiffness: 300, damping: 30 }}
       className="bottom-nav"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={() => setDragging(false)}
       style={{
         background: `rgba(${r}, ${g}, ${b}, 0.08)`,
         borderColor: `rgba(${r}, ${g}, ${b}, 0.12)`,
         boxShadow: `0 8px 32px rgba(${r}, ${g}, ${b}, 0.08), 0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7)`,
+        touchAction: "pan-x",
       }}
     >
-      {TABS.map((tab) => {
-        const active = pathname === tab.path || pathname.startsWith(tab.path + "/")
+      {TABS.map((tab, i) => {
+        const isActive = pathname === tab.path || pathname.startsWith(tab.path + "/")
+        const isFlowTarget = dragging && flowX !== null && highlightIdx === i
         return (
-          <Link key={tab.path} href={tab.path} style={{ flex: 1, display: "flex", justifyContent: "center", textDecoration: "none" }}>
-            <motion.div whileTap={{ scale: 0.85 }} className="bottom-nav-item-inner">
+          <Link key={tab.path} href={tab.path} style={{ flex: 1, display: "flex", justifyContent: "center", textDecoration: "none" }}
+            onClick={(e) => { if (dragging) e.preventDefault() }}>
+            <motion.div whileTap={dragging ? {} : { scale: 0.85 }} className="bottom-nav-item-inner">
               <motion.div
                 className="bottom-nav-icon"
-                animate={{ color: active ? color : "#888" }}
-                transition={{ duration: 0.25 }}
+                animate={{ color: isActive || isFlowTarget ? color : "#888" }}
+                transition={{ duration: 0.15 }}
               >
-                {active && (
+                {(isActive || isFlowTarget) && (
                   <motion.div
                     layoutId="nav-glass"
                     className="nav-active-pill"
                     style={{
-                      background: `rgba(${r}, ${g}, ${b}, 0.12)`,
+                      background: dragging
+                        ? `rgba(${r}, ${g}, ${b}, 0.18)`
+                        : `rgba(${r}, ${g}, ${b}, 0.12)`,
                       borderColor: `rgba(${r}, ${g}, ${b}, 0.2)`,
                       boxShadow: `0 4px 16px rgba(${r}, ${g}, ${b}, 0.15), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.03)`,
                     }}
@@ -60,10 +115,10 @@ export default function BottomNav() {
               <motion.span
                 className="bottom-nav-label"
                 animate={{
-                  color: active ? color : "#999",
-                  opacity: active ? 1 : 0.7,
+                  color: isActive || isFlowTarget ? color : "#999",
+                  opacity: isActive || isFlowTarget ? 1 : 0.7,
                 }}
-                transition={{ duration: 0.25 }}
+                transition={{ duration: 0.15 }}
               >
                 {tab.label}
               </motion.span>
@@ -71,6 +126,23 @@ export default function BottomNav() {
           </Link>
         )
       })}
+
+      {dragging && flowX !== null && navRef.current && (
+        <motion.div
+          style={{
+            position: "absolute",
+            top: 4,
+            bottom: 4,
+            width: 48,
+            borderRadius: 20,
+            background: `radial-gradient(ellipse at center, rgba(${r}, ${g}, ${b}, 0.2) 0%, transparent 70%)`,
+            pointerEvents: "none",
+            filter: "blur(8px)",
+          }}
+          animate={{ left: flowX - navRef.current.getBoundingClientRect().left - 24 }}
+          transition={{ type: "tween", duration: 0.05 }}
+        />
+      )}
     </motion.nav>
   )
 }

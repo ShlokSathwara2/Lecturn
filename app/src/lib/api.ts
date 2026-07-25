@@ -126,9 +126,22 @@ export const exportApi = {
   chapterUrl: (chapterId: string, format: string, includeImages: boolean = true) =>
     `/api/proxy?path=${encodeURIComponent(`/export/chapter/${chapterId}?format=${format}&include_images=${includeImages}`)}`,
   async download(url: string, filename: string) {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error("Export failed")
+    let res: Response
+    try {
+      res = await fetch(url)
+    } catch {
+      throw new Error("Network error — backend may be waking up. Try again in 30s.")
+    }
+    if (!res.ok) {
+      let msg = `Export failed (${res.status})`
+      try {
+        const body = await res.json()
+        if (body.detail) msg = body.detail
+      } catch {}
+      throw new Error(msg)
+    }
     const blob = await res.blob()
+    if (blob.size < 100) throw new Error("Export returned empty file")
     if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename)] })) {
       await navigator.share({ files: [new File([blob], filename, { type: blob.type })] })
     } else {
