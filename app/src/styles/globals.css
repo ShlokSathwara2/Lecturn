@@ -119,6 +119,7 @@ input, textarea {
   height: 28px;
   border-radius: 14px;
   position: relative;
+  transition: color 0.25s ease;
 }
 
 .nav-active-pill {
@@ -146,6 +147,7 @@ input, textarea {
   font-size: 9px;
   font-weight: 500;
   color: #999;
+  transition: color 0.25s ease;
   letter-spacing: 0.01em;
   line-height: 1;
 }
