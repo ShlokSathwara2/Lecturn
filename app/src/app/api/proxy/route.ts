@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const API_BASE = "https://lecturn-wa7t.onrender.com"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://lecturn-wa7t.onrender.com"
 
 async function proxyRequest(request: NextRequest, method: string) {
   const url = new URL(request.url)
