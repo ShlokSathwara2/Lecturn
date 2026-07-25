@@ -13,7 +13,7 @@ interface SubjectInfo { id: string; name: string }
 interface Capture {
   id: string; chapter_id: string; date_taken: string; image_url?: string | null
   raw_text?: string | null; ai_content_json?: { enrichment?: { explanation?: string } } | null
-  ai_status: string; status: string
+  ai_status: string; status: string; cleaned_diagram_url?: string | null; original_diagram_crop_url?: string | null
 }
 
 function getDateLabel(iso: string) {
@@ -139,7 +139,7 @@ export default function ChapterNotesPage() {
   const groups = groupByDate(captures)
 
   return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }}>
+    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }} className="page-with-nav">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
         <button onClick={() => router.push("/dashboard")} style={{ fontSize: 22, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", lineHeight: 1, minWidth: 44, minHeight: 44 }}>
           &larr;
@@ -222,6 +222,10 @@ export default function ChapterNotesPage() {
               transcript={audioMap[cap.id]?.transcript || null}
               audioUrl={audioMap[cap.id]?.audio_url || null}
               status={cap.status}
+              diagrams={[
+                cap.cleaned_diagram_url ? { description: "Cleaned diagram", original_crop_url: cap.cleaned_diagram_url } : null,
+                cap.original_diagram_crop_url ? { description: "Original diagram", original_crop_url: cap.original_diagram_crop_url } : null,
+              ].filter(Boolean) as any[]}
             />
           ))}
         </div>

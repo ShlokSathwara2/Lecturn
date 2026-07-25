@@ -53,13 +53,13 @@ export default function QuizPage() {
   }
 
   if (loading) return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }} className="page-with-nav">
       <p style={{ fontSize: 16, color: "#606060" }}>Loading cards...</p>
     </main>
   )
 
   if (done) return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }} className="page-with-nav">
       <p style={{ fontSize: 24 }}>&#x2705;</p>
       <h1 style={{ fontSize: 20, fontWeight: 600, textAlign: "center" }}>Revision complete!</h1>
       <p style={{ fontSize: 14, color: "#909090", textAlign: "center" }}>{totalStarted} cards reviewed</p>
@@ -71,7 +71,7 @@ export default function QuizPage() {
   )
 
   if (cards.length === 0) return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }} className="page-with-nav">
       <p style={{ fontSize: 16, color: "#606060" }}>No flashcards available for this subject. Generate AI content first.</p>
     </main>
   )
@@ -80,7 +80,7 @@ export default function QuizPage() {
   const remaining = cards.length - 1
 
   return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", gap: 16 }}>
+    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", gap: 16 }} className="page-with-nav">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={() => router.push("/dashboard")} style={{ fontSize: 13, color: "#909090", padding: "10px 16px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
           &larr; Dashboard

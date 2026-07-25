@@ -121,10 +121,10 @@ export const quiz = {
 }
 
 export const exportApi = {
-  subjectUrl: (subjectId: string, format: string) =>
-    `/api/proxy?path=${encodeURIComponent(`/export/subject/${subjectId}?format=${format}`)}`,
-  chapterUrl: (chapterId: string, format: string) =>
-    `/api/proxy?path=${encodeURIComponent(`/export/chapter/${chapterId}?format=${format}`)}`,
+  subjectUrl: (subjectId: string, format: string, includeImages: boolean = true) =>
+    `/api/proxy?path=${encodeURIComponent(`/export/subject/${subjectId}?format=${format}&include_images=${includeImages}`)}`,
+  chapterUrl: (chapterId: string, format: string, includeImages: boolean = true) =>
+    `/api/proxy?path=${encodeURIComponent(`/export/chapter/${chapterId}?format=${format}&include_images=${includeImages}`)}`,
   async download(url: string, filename: string) {
     const res = await fetch(url)
     if (!res.ok) throw new Error("Export failed")

@@ -345,7 +345,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }}>
+    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }} className="page-with-nav">
       <style>{`
         @keyframes gradientShift {
           0% { background-position: 0% 50%; }
@@ -372,18 +372,6 @@ export default function DashboardPage() {
           </h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#059669" : "#f59e0b", flexShrink: 0 }} />
-            <motion.button onClick={() => router.push("/capture")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(59,130,246,0.1)" }}>
-              Capture
-            </motion.button>
-            <motion.button onClick={() => router.push("/notes")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(139,92,246,0.1)" }}>
-              Notes
-            </motion.button>
-            <motion.button onClick={() => router.push("/quiz")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(5,150,105,0.1)" }}>
-              Quiz
-            </motion.button>
           </div>
         </motion.div>
 
@@ -539,16 +527,6 @@ export default function DashboardPage() {
           ))}
         </motion.div>
       </div>
-
-        {!loading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            style={{ paddingTop: 16, paddingBottom: 32 }}>
-            <motion.button onClick={() => router.push("/profile")} whileHover={{ scale: 1.02, x: 4 }}
-              style={{ fontSize: 13, color: "#606060", padding: "10px 0", background: "transparent", border: "none", fontFamily: "var(--font-mono)", cursor: "pointer" }}>
-              Profile &rarr;
-            </motion.button>
-          </motion.div>
-        )}
 
       <AnimatePresence>
         {showAssignPicker && (

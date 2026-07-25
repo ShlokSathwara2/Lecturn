@@ -107,7 +107,7 @@ export default function ProfilePage() {
   const memberSince = user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) : ""
 
   return (
-    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }}>
+    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }} className="page-with-nav">
       <style>{`
         @keyframes gradientShift {
           0% { background-position: 0% 50%; }

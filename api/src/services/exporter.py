@@ -112,7 +112,7 @@ def _rtf_encode_image(data: bytes, ext: str) -> str:
     return "{" + BS + "pict" + BS + blip + BS + "picwgoal4535" + BS + "pichgoal3400 " + b64 + "}"
 
 
-async def build_rtf(rows: list[dict], title: str) -> bytes:
+async def build_rtf(rows: list[dict], title: str, include_images: bool = True) -> bytes:
     BS = "\\"
     def esc(t):
         return _escape_rtf(t)
@@ -130,7 +130,7 @@ async def build_rtf(rows: list[dict], title: str) -> bytes:
         if r["chapter_title"] != current_chapter:
             current_chapter = r["chapter_title"]
             blocks.append(cmd("pard") + cmd("b") + cmd("fs32") + cmd("cf1") + " " + esc(current_chapter) + cmd("b0") + cmd("par") + cmd("par"))
-        if r["image_url"]:
+        if include_images and r["image_url"]:
             img_data = await _fetch_image_bytes(r["image_url"])
             if img_data:
                 blocks.append(cmd("pard") + cmd("qc") + " " + _rtf_encode_image(img_data, _image_ext(r["image_url"])) + cmd("par") + cmd("par"))
@@ -150,7 +150,7 @@ async def build_rtf(rows: list[dict], title: str) -> bytes:
 # ----------------------------------------------------------------
 # DOCX
 # ----------------------------------------------------------------
-async def build_docx(rows: list[dict], title: str) -> bytes:
+async def build_docx(rows: list[dict], title: str, include_images: bool = True) -> bytes:
     doc = Document()
     style = doc.styles["Normal"]
     style.font.name = "Calibri"
@@ -163,7 +163,7 @@ async def build_docx(rows: list[dict], title: str) -> bytes:
             current_chapter = r["chapter_title"]
             doc.add_heading(current_chapter, 1)
 
-        if r["image_url"]:
+        if include_images and r["image_url"]:
             img_data = await _fetch_image_bytes(r["image_url"])
             if img_data:
                 try:
@@ -198,13 +198,13 @@ def _escape_xml(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-async def build_enex(rows: list[dict], title: str) -> str:
+async def build_enex(rows: list[dict], title: str, include_images: bool = True) -> str:
     notes_xml = []
     for r in rows:
         body_parts = []
         img_resources = []
 
-        if r["image_url"]:
+        if include_images and r["image_url"]:
             img_data = await _fetch_image_bytes(r["image_url"])
             if img_data:
                 ext = _image_ext(r["image_url"])
@@ -254,12 +254,53 @@ async def build_enex(rows: list[dict], title: str) -> str:
 # ----------------------------------------------------------------
 # PDF
 # ----------------------------------------------------------------
-async def build_pdf(rows: list[dict], title: str) -> bytes:
+def _find_font() -> str:
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return ""
+
+def _find_font_bold() -> str:
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return ""
+
+
+async def build_pdf(rows: list[dict], title: str, include_images: bool = True) -> bytes:
     pdf = FPDF()
     pdf.add_page()
-    pdf.add_font("DejaVu", "", r"C:\Windows\Fonts\arial.ttf", uni=True)
-    pdf.add_font("DejaVu", "B", r"C:\Windows\Fonts\arialbd.ttf", uni=True)
-    pdf.set_font("DejaVu", "B", 18)
+
+    font_path = _find_font()
+    font_bold_path = _find_font_bold()
+
+    if font_path:
+        pdf.add_font("Custom", "", font_path, uni=True)
+    if font_bold_path:
+        pdf.add_font("Custom", "B", font_bold_path, uni=True)
+
+    font_name = "Custom" if font_path else "Helvetica"
+    font_bold = "Custom" if font_bold_path else "Helvetica"
+
+    pdf.set_font(font_bold, "B", 18)
     pdf.cell(0, 12, title, new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(4)
 
@@ -267,11 +308,11 @@ async def build_pdf(rows: list[dict], title: str) -> bytes:
     for r in rows:
         if r["chapter_title"] != current_chapter:
             current_chapter = r["chapter_title"]
-            pdf.set_font("DejaVu", "B", 14)
+            pdf.set_font(font_bold, "B", 14)
             pdf.cell(0, 10, current_chapter, new_x="LMARGIN", new_y="NEXT")
             pdf.ln(2)
 
-        if r["image_url"]:
+        if include_images and r["image_url"]:
             img_data = await _fetch_image_bytes(r["image_url"])
             if img_data:
                 ext = _image_ext(r["image_url"])
@@ -291,23 +332,23 @@ async def build_pdf(rows: list[dict], title: str) -> bytes:
                         pass
 
         if r["raw_text"]:
-            pdf.set_font("DejaVu", "B", 11)
+            pdf.set_font(font_bold, "B", 11)
             pdf.cell(0, 7, "Slide Content", new_x="LMARGIN", new_y="NEXT")
-            pdf.set_font("DejaVu", "", 10)
+            pdf.set_font(font_name, "", 10)
             pdf.multi_cell(0, 5, r["raw_text"])
             pdf.ln(2)
 
         if r["explanation"]:
-            pdf.set_font("DejaVu", "B", 11)
+            pdf.set_font(font_bold, "B", 11)
             pdf.cell(0, 7, "Study Notes", new_x="LMARGIN", new_y="NEXT")
-            pdf.set_font("DejaVu", "", 10)
+            pdf.set_font(font_name, "", 10)
             pdf.multi_cell(0, 5, r["explanation"])
             pdf.ln(2)
 
         if r["key_points"]:
-            pdf.set_font("DejaVu", "B", 11)
+            pdf.set_font(font_bold, "B", 11)
             pdf.cell(0, 7, "Key Points:", new_x="LMARGIN", new_y="NEXT")
-            pdf.set_font("DejaVu", "", 10)
+            pdf.set_font(font_name, "", 10)
             for kp in r["key_points"]:
                 pdf.set_x(pdf.l_margin + 5)
                 pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - 5, 5, f"- {kp}")

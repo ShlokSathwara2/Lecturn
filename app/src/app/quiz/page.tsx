@@ -106,7 +106,7 @@ export default function QuizPage() {
   }
 
   return (
-    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }}>
+    <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }} className="page-with-nav">
       <style>{`
         @keyframes gradientShift {
           0% { background-position: 0% 50%; }

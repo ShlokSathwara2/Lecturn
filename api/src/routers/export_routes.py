@@ -43,18 +43,18 @@ EXT_MAP = {
 
 
 @router.get("/subject/{subject_id}")
-async def export_subject(subject_id: str, format: str = Query("docx")):
+async def export_subject(subject_id: str, format: str = Query("docx"), include_images: bool = Query(True)):
     title, rows = await _resolve_subject_or_chapter(subject_id=subject_id)
-    return await _build_export(rows, title, format)
+    return await _build_export(rows, title, format, include_images)
 
 
 @router.get("/chapter/{chapter_id}")
-async def export_chapter(chapter_id: str, format: str = Query("docx")):
+async def export_chapter(chapter_id: str, format: str = Query("docx"), include_images: bool = Query(True)):
     title, rows = await _resolve_subject_or_chapter(chapter_id=chapter_id)
-    return await _build_export(rows, title, format)
+    return await _build_export(rows, title, format, include_images)
 
 
-async def _build_export(rows: list[dict], title: str, format: str):
+async def _build_export(rows: list[dict], title: str, format: str, include_images: bool = True):
     if format not in ("txt", "rtf", "docx", "enex", "pdf"):
         raise HTTPException(400, f"Unsupported format: {format}")
     if not rows:
@@ -68,17 +68,17 @@ async def _build_export(rows: list[dict], title: str, format: str):
         return Response(content=content.encode("utf-8"), media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     if format == "rtf":
-        content = await build_rtf(rows, title)
+        content = await build_rtf(rows, title, include_images)
         return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     if format == "docx":
-        content = await build_docx(rows, title)
+        content = await build_docx(rows, title, include_images)
         return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     if format == "enex":
-        content = await build_enex(rows, title)
+        content = await build_enex(rows, title, include_images)
         return Response(content=content.encode("utf-8"), media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     if format == "pdf":
-        content = await build_pdf(rows, title)
+        content = await build_pdf(rows, title, include_images)
         return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})

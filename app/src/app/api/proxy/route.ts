@@ -5,9 +5,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://lecturn-wa7t.onrend
 async function proxyRequest(request: NextRequest, method: string) {
   const url = new URL(request.url)
   const targetPath = url.searchParams.get("path") || "/"
-  const contentType = request.headers.get("content-type") || "application/json"
 
-  const headers: Record<string, string> = { "Content-Type": contentType }
+  const headers: Record<string, string> = {}
+  const contentType = request.headers.get("content-type")
+  if (contentType) {
+    headers["Content-Type"] = contentType
+  }
 
   let body: BodyInit | undefined
   if (method !== "GET" && method !== "DELETE") {
@@ -15,10 +18,24 @@ async function proxyRequest(request: NextRequest, method: string) {
   }
 
   const res = await fetch(`${API_BASE}${targetPath}`, { method, headers, body })
-  const data = await res.text()
-  return new NextResponse(data, {
+
+  const resContentType = res.headers.get("content-type") || "application/json"
+
+  if (resContentType.includes("application/json")) {
+    const data = await res.text()
+    return new NextResponse(data, {
+      status: res.status,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
+  const arrayBuf = await res.arrayBuffer()
+  return new NextResponse(arrayBuf, {
     status: res.status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": resContentType,
+      "Content-Disposition": res.headers.get("content-disposition") || "",
+    },
   })
 }
 

@@ -78,3 +78,61 @@ input, textarea {
   position: relative;
   overflow: hidden;
 }
+
+/* Bottom navigation bar */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(42, 42, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  z-index: 1000;
+}
+
+.bottom-nav-item {
+  text-decoration: none;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.bottom-nav-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #505050;
+  transition: color 0.2s;
+  padding: 6px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.bottom-nav-icon.active {
+  color: #3b82f6;
+}
+
+.bottom-nav-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.bottom-nav-label {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Page wrapper with bottom nav padding */
+.page-with-nav {
+  padding-bottom: 80px;
+}

@@ -9,6 +9,7 @@ import CaptureBlock from "@/components/CaptureBlock"
 interface Capture {
   id: string; chapter_id?: string; subject_id?: string; date_taken: string; image_url?: string | null
   raw_text?: string | null; ai_content_json?: any; ai_status: string; status: string
+  cleaned_diagram_url?: string | null; original_diagram_crop_url?: string | null
 }
 
 export default function CaptureDetailPage() {
@@ -60,7 +61,7 @@ export default function CaptureDetailPage() {
   useSwipe(() => router.back())
 
   return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }}>
+    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }} className="page-with-nav">
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => router.back()} style={{ fontSize: 22, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", lineHeight: 1, minWidth: 44, minHeight: 44 }}>
           &larr;
@@ -87,6 +88,10 @@ export default function CaptureDetailPage() {
           transcript={audio?.transcript || null}
           audioUrl={audio?.audio_url || null}
           status={capture.status}
+          diagrams={[
+            capture.cleaned_diagram_url ? { description: "Cleaned diagram", original_crop_url: capture.cleaned_diagram_url } : null,
+            capture.original_diagram_crop_url ? { description: "Original diagram", original_crop_url: capture.original_diagram_crop_url } : null,
+          ].filter(Boolean) as any[]}
         />
       )}
 
