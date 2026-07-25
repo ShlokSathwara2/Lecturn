@@ -79,49 +79,89 @@ input, textarea {
   overflow: hidden;
 }
 
-/* Bottom navigation bar - floating pill */
+/* Bottom navigation bar - floating glass pill */
 .bottom-nav {
   position: fixed;
   bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 52px;
-  background: #000;
-  border: 1px solid #2a2a2a;
-  border-radius: 28px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  height: 64px;
+  background: rgba(240, 240, 240, 0.75);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 32px;
   display: flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 10px;
   z-index: 1000;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-.bottom-nav-item {
-  text-decoration: none;
-  flex: 1;
+.bottom-nav-item-inner {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  min-width: 56px;
+  cursor: pointer;
 }
 
 .bottom-nav-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #505050;
-  transition: color 0.2s;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  cursor: pointer;
+  color: #888;
+  width: 40px;
+  height: 32px;
+  border-radius: 16px;
+  position: relative;
+  transition: color 0.25s ease;
 }
 
 .bottom-nav-icon.active {
-  color: #fff;
+  color: #1a1a1a;
+}
+
+.nav-active-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px) saturate(1.6);
+  -webkit-backdrop-filter: blur(12px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 4px 16px rgba(59, 130, 246, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .bottom-nav-icon svg {
-  width: 24px;
-  height: 24px;
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+}
+
+.bottom-nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #999;
+  transition: color 0.25s ease;
+  letter-spacing: 0.01em;
+}
+
+.bottom-nav-label.active {
+  color: #1a1a1a;
+  font-weight: 600;
 }
 
 /* Page wrapper with bottom nav padding */
