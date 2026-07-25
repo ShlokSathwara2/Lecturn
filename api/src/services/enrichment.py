@@ -63,7 +63,10 @@ async def enrich_text(raw_text: str, format: str = DEFAULT_FORMAT) -> dict:
     resp.raise_for_status()
     raw = resp.json()["choices"][0]["message"]["content"].strip()
     raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    result = json.loads(raw)
+    import re
+    raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', raw)
+    raw = re.sub(r'\n+', ' ', raw)
+    result = json.loads(raw, strict=False)
 
     return {
         "explanation": result.get("explanation", raw_text),
