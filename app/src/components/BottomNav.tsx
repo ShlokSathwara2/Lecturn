@@ -174,10 +174,11 @@ export default function BottomNav() {
         className="nav-active-pill"
         style={{
           position: "absolute",
-          top: 4,
-          bottom: 4,
+          top: "50%",
+          marginTop: -PILL_H / 2,
+          height: PILL_H,
           width: PILL_W,
-          borderRadius: 24,
+          borderRadius: 16,
           background: `rgba(${r}, ${g}, ${b}, 0.12)`,
           boxShadow: `0 2px 12px rgba(${r}, ${g}, ${b}, 0.12), inset 0 1px 0 rgba(255,255,255,0.8)`,
           border: `1px solid rgba(${r}, ${g}, ${b}, 0.15)`,
