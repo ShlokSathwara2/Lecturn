@@ -155,6 +155,14 @@ export default function DashboardPage() {
 
   const [subjectsNotesMap, setSubjectsNotesMap] = useState<Record<string, number>>({})
 
+  const [unassignedCaptures, setUnassignedCaptures] = useState<Capture[]>([])
+  const [showAssignPicker, setShowAssignPicker] = useState(false)
+  const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(null)
+  const [assignSubjectName, setAssignSubjectName] = useState("")
+  const [assignChapterName, setAssignChapterName] = useState("")
+  const [assigning, setAssigning] = useState(false)
+  const subjectInputRef = useRef<HTMLInputElement>(null)
+
   const refreshQueue = useCallback(async () => {
     try {
       const q = await getQueue()
@@ -190,7 +198,7 @@ export default function DashboardPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push("/auth"); return }
       setUserId(data.user.id)
-      loadSubjects(data.user.id)
+      loadData(data.user.id)
       refreshQueue()
     })
   }, [])
@@ -199,7 +207,13 @@ export default function DashboardPage() {
     if (online && pendingCount > 0) syncQueue()
   }, [online])
 
-  async function loadSubjects(uid?: string) {
+  useEffect(() => {
+    if (showAssignPicker && subjectInputRef.current) {
+      setTimeout(() => subjectInputRef.current?.focus(), 300)
+    }
+  }, [showAssignPicker])
+
+  async function loadData(uid?: string) {
     setLoading(true)
     try {
       const list = await subjectsApi.list(uid || "")
@@ -219,6 +233,11 @@ export default function DashboardPage() {
       }
       setChaptersCountBySubject(countMap)
       setSubjectsNotesMap(notesMap)
+
+      try {
+        const unassigned = await capturesApi.unassigned(uid)
+        setUnassignedCaptures(unassigned)
+      } catch {}
     } catch {}
     setLoading(false)
   }
@@ -245,7 +264,7 @@ export default function DashboardPage() {
       if (!user) return
       await subjectsApi.create({ name: newSubjectName.trim(), user_id: user.id })
       setNewSubjectName("")
-      await loadSubjects(user.id)
+      await loadData(user.id)
     } catch (e) {
       console.warn("Failed to add subject", e)
     }
@@ -263,12 +282,67 @@ export default function DashboardPage() {
     }
   }
 
+  async function openAssign(captureId: string) {
+    setPendingCaptureId(captureId)
+    setAssignSubjectName("")
+    setAssignChapterName("")
+    setShowAssignPicker(true)
+  }
+
+  async function confirmAssign() {
+    if (!pendingCaptureId || !assignSubjectName.trim() || !assignChapterName.trim()) return
+    setAssigning(true)
+
+    try {
+      const { data: { user: u } } = await supabase.auth.getUser()
+      if (!u) return
+
+      const existingSubjects = await subjectsApi.list(u.id)
+      let subject = existingSubjects.find((s: Subject) => s.name.toLowerCase() === assignSubjectName.trim().toLowerCase())
+
+      if (!subject) {
+        subject = await subjectsApi.create({ name: assignSubjectName.trim(), user_id: u.id })
+      }
+
+      const existingChapters = await chaptersApi.list(subject.id)
+      let chapter = existingChapters.find((c: Chapter) => c.title.toLowerCase() === assignChapterName.trim().toLowerCase())
+
+      if (!chapter) {
+        chapter = await chaptersApi.create({ subject_id: subject.id, title: assignChapterName.trim() })
+      }
+
+      await capturesApi.update(pendingCaptureId, { chapter_id: chapter.id })
+
+      setShowAssignPicker(false)
+      setPendingCaptureId(null)
+      setAssignSubjectName("")
+      setAssignChapterName("")
+      await loadData(u.id)
+    } catch (e) {
+      console.warn("Assign failed", e)
+    }
+    setAssigning(false)
+  }
+
+  function skipAssign() {
+    setShowAssignPicker(false)
+    setPendingCaptureId(null)
+    setAssignSubjectName("")
+    setAssignChapterName("")
+  }
+
   const filteredSubjects = subjects.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const subjectsWithNotes = filteredSubjects.filter((s) => (subjectsNotesMap[s.id] || 0) > 0).length
   const subjectsWithoutNotes = filteredSubjects.length - subjectsWithNotes
+
+  function getCaptureLabel(cap: Capture) {
+    if (cap.raw_text) return cap.raw_text.slice(0, 60) + (cap.raw_text.length > 60 ? "..." : "")
+    if (cap.image_url) return "Photo capture"
+    return "Untitled capture"
+  }
 
   return (
     <main style={{ fontFamily: "var(--font-body)", minHeight: "100dvh", position: "relative" }}>
@@ -331,6 +405,34 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
+        {!loading && unassignedCaptures.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <p style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#f59e0b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+              Unassigned ({unassignedCaptures.length})
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {unassignedCaptures.map((cap, i) => (
+                <motion.div key={cap.id}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {getCaptureLabel(cap)}
+                    </p>
+                    <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                      {new Date(cap.date_taken).toLocaleDateString()} &middot; {cap.ai_status === "auto_generated" ? "auto generated" : "not generated"}
+                    </p>
+                  </div>
+                  <motion.button onClick={() => openAssign(cap.id)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 500, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    Assign
+                  </motion.button>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {filteredSubjects.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             style={{ padding: "16px 20px", borderRadius: 16, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(12px)", border: "1px solid #2a2a2a" }}>
@@ -367,7 +469,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {!loading && filteredSubjects.length === 0 && (
+        {!loading && filteredSubjects.length === 0 && unassignedCaptures.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             style={{ textAlign: "center", padding: 32, border: "1px dashed #2a2a2a", borderRadius: 12 }}>
             <p style={{ fontSize: 14, color: "#606060" }}>
@@ -436,6 +538,71 @@ export default function DashboardPage() {
           ))}
         </motion.div>
       </div>
+
+        {!loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            style={{ paddingTop: 16, paddingBottom: 32 }}>
+            <motion.button onClick={async () => { await supabase.auth.signOut(); router.push("/auth") }}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              style={{ fontSize: 13, color: "#606060", padding: "10px 0", background: "transparent", border: "none", fontFamily: "var(--font-mono)", cursor: "pointer" }}>
+              Sign out &rarr;
+            </motion.button>
+          </motion.div>
+        )}
+
+      <AnimatePresence>
+        {showAssignPicker && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }}>
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              style={{ background: "rgba(26,26,26,0.95)", backdropFilter: "blur(20px)", borderRadius: 20, padding: 28, width: "100%", maxWidth: 400, border: "1px solid rgba(59,130,246,0.15)", maxHeight: "90vh", overflowY: "auto" }}>
+              <motion.h3 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                style={{ color: "#e8e8e8", fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+                Assign to subject & chapter
+              </motion.h3>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+                style={{ color: "#606060", fontSize: 13, marginBottom: 20 }}>
+                Type the subject and chapter name below
+              </motion.p>
+
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                <label style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#3b82f6", marginBottom: 6, display: "block", letterSpacing: "0.08em" }}>SUBJECT</label>
+                <input ref={subjectInputRef} value={assignSubjectName} onChange={(e) => setAssignSubjectName(e.target.value)}
+                  placeholder="e.g. Linear Algebra"
+                  style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", marginBottom: 16, transition: "border-color 0.2s ease" }}
+                  onFocus={(e) => e.target.style.borderColor = "#3b82f6"}
+                  onBlur={(e) => e.target.style.borderColor = "#2a2a2a"} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
+                <label style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#8b5cf6", marginBottom: 6, display: "block", letterSpacing: "0.08em" }}>CHAPTER</label>
+                <input value={assignChapterName} onChange={(e) => setAssignChapterName(e.target.value)}
+                  placeholder="e.g. Matrix Operations"
+                  style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", marginBottom: 20, transition: "border-color 0.2s ease" }}
+                  onFocus={(e) => e.target.style.borderColor = "#8b5cf6"}
+                  onBlur={(e) => e.target.style.borderColor = "#2a2a2a"}
+                  onKeyDown={(e) => e.key === "Enter" && assignSubjectName.trim() && assignChapterName.trim() && confirmAssign()} />
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                style={{ display: "flex", gap: 10 }}>
+                <motion.button onClick={skipAssign} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  style={{ flex: 1, padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", fontSize: 14, color: "#909090", background: "transparent" }}>
+                  Skip
+                </motion.button>
+                <motion.button onClick={confirmAssign}
+                  disabled={assigning || !assignSubjectName.trim() || !assignChapterName.trim()}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  style={{ flex: 1, padding: "14px 16px", borderRadius: 12, background: assignSubjectName.trim() && assignChapterName.trim() ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "#2a2a2a", color: "#fff", fontSize: 14, fontWeight: 500, opacity: assigning || !assignSubjectName.trim() || !assignChapterName.trim() ? 0.6 : 1 }}>
+                  {assigning ? "Assigning..." : "Assign"}
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   )
 }
