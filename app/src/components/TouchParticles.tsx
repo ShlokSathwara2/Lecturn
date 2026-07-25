@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useCallback, useState } from "react"
+import { useRef, useEffect, useCallback } from "react"
 
 interface Particle {
   x: number
@@ -99,62 +99,68 @@ export default function TouchParticles() {
     }
   }, [])
 
-  function onPointerDown(e: React.PointerEvent) {
-    if (e.pointerType === "mouse" && e.button !== 0) return
-    pointerDown.current = true
-    lastPos.current = { x: e.clientX, y: e.clientY }
-    for (let i = 0; i < 4; i++) spawnParticle(e.clientX, e.clientY)
-    if (!animFrame) animFrame = requestAnimationFrame(tick)
-  }
-
-  function onPointerMove(e: React.PointerEvent) {
-    if (!pointerDown.current) return
-    const dx = e.clientX - lastPos.current.x
-    const dy = e.clientY - lastPos.current.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const count = Math.min(3, Math.max(1, Math.floor(dist / 8)))
-    for (let i = 0; i < count; i++) {
-      const t = i / count
-      spawnParticle(
-        lastPos.current.x + dx * t,
-        lastPos.current.y + dy * t
-      )
-    }
-    lastPos.current = { x: e.clientX, y: e.clientY }
-  }
-
-  function onPointerUp() {
-    pointerDown.current = false
-  }
-
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+
     const resize = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
     }
     resize()
     window.addEventListener("resize", resize)
+
+    function onPointerDown(e: PointerEvent) {
+      if (e.pointerType === "mouse" && e.button !== 0) return
+      pointerDown.current = true
+      lastPos.current = { x: e.clientX, y: e.clientY }
+      for (let i = 0; i < 4; i++) spawnParticle(e.clientX, e.clientY)
+      if (!animFrame) animFrame = requestAnimationFrame(tick)
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      if (!pointerDown.current) return
+      const dx = e.clientX - lastPos.current.x
+      const dy = e.clientY - lastPos.current.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const count = Math.min(3, Math.max(1, Math.floor(dist / 8)))
+      for (let i = 0; i < count; i++) {
+        const t = i / count
+        spawnParticle(
+          lastPos.current.x + dx * t,
+          lastPos.current.y + dy * t
+        )
+      }
+      lastPos.current = { x: e.clientX, y: e.clientY }
+    }
+
+    function onPointerUp() {
+      pointerDown.current = false
+    }
+
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("pointermove", onPointerMove)
+    document.addEventListener("pointerup", onPointerUp)
+    document.addEventListener("pointercancel", onPointerUp)
+
     return () => {
       window.removeEventListener("resize", resize)
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("pointermove", onPointerMove)
+      document.removeEventListener("pointerup", onPointerUp)
+      document.removeEventListener("pointercancel", onPointerUp)
       if (animFrame) cancelAnimationFrame(animFrame)
     }
-  }, [])
+  }, [tick])
 
   return (
     <canvas
       ref={canvasRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        pointerEvents: "auto",
-        touchAction: "none",
+        pointerEvents: "none",
       }}
     />
   )
