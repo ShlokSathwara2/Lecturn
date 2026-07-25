@@ -115,6 +115,15 @@ export const audioNotes = {
   },
 }
 
+export const aiNotes = {
+  generate: (subjectId: string, userId: string) =>
+    request<any>("/ai-notes/generate", { method: "POST", body: JSON.stringify({ subject_id: subjectId, user_id: userId }) }),
+  get: (subjectId: string) =>
+    request<any>(`/ai-notes/${subjectId}`),
+  delete: (subjectId: string) =>
+    request<any>(`/ai-notes/${subjectId}`, { method: "DELETE" }),
+}
+
 export const quiz = {
   get: (subjectId: string) =>
     request<{ subject_id: string; total_cards: number; cards: any[] }>(`/quiz/${subjectId}`),

@@ -98,6 +98,14 @@ input, textarea {
   align-items: center;
   padding: 0 8px;
   z-index: 1000;
+  will-change: transform;
+  contain: layout;
+  animation: navSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes navSlideUp {
+  from { transform: translateY(80px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .bottom-nav-item-inner {
