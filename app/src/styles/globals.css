@@ -12,6 +12,7 @@ html {
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 body {

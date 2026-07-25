@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
+import MarkdownRenderer from "./MarkdownRenderer"
 
 interface Diagram {
   description: string
@@ -20,6 +21,8 @@ interface CaptureBlockProps {
   onEdit?: (rawText: string, aiContent: string | null) => void
   onDelete?: () => void
   onDeleteImage?: () => void
+  onPin?: () => void
+  pinned?: boolean
   transcript?: string | null
   audioUrl?: string | null
   status?: string
@@ -36,6 +39,8 @@ export default function CaptureBlock({
   onEdit,
   onDelete,
   onDeleteImage,
+  onPin,
+  pinned,
   transcript,
   audioUrl,
   status,
@@ -69,6 +74,12 @@ export default function CaptureBlock({
     >
       {editable && !editing && (
         <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4, zIndex: 2 }}>
+          {onPin && (
+            <button onClick={onPin}
+              style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontFamily: "var(--font-mono)", background: pinned ? "rgba(245,158,11,0.2)" : "rgba(0,0,0,0.6)", color: pinned ? "#f59e0b" : "#909090", border: `1px solid ${pinned ? "#f59e0b" : "#2a2a2a"}` }}>
+              {pinned ? "\u2605" : "\u2606"}
+            </button>
+          )}
           <button onClick={() => { setEditing(true); setEditText(rawText); setEditAi(aiContent || "") }}
             style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontFamily: "var(--font-mono)", background: "rgba(0,0,0,0.6)", color: "#909090", border: "1px solid #2a2a2a" }}>
             Edit
@@ -154,7 +165,7 @@ export default function CaptureBlock({
             {showAi && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.3, ease: "easeOut" }}
                 style={{ padding: 12, borderRadius: 8, background: "rgba(59, 130, 246, 0.08)", borderLeft: "3px solid #3b82f6" }}>
-                <p style={{ fontSize: 14, lineHeight: 1.6, color: "#3b82f6" }}>{aiContent}</p>
+                <MarkdownRenderer content={aiContent || ""} />
               </motion.div>
             )}
             {transcript && (

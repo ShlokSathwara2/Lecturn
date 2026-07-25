@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
 import { motion } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
+import { useTheme } from "@/lib/ThemeContext"
 
 function ParticleField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -70,6 +71,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const supabase = createClient()
   usePageAccent("#ec4899")
+  const { theme, toggle } = useTheme()
 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -185,6 +187,15 @@ export default function ProfilePage() {
                   <span style={{ color: "#606060" }}>&rarr;</span>
                 </motion.button>
               ))}
+            </motion.div>
+
+            <motion.div variants={itemVariants}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 10, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid #2a2a2a" }}>
+              <span style={{ fontSize: 15, color: "#e8e8e8" }}>Theme</span>
+              <motion.button onClick={toggle} whileTap={{ scale: 0.9 }}
+                style={{ padding: "6px 14px", borderRadius: 8, background: theme === "dark" ? "#3b82f6" : "#f59e0b", color: "#fff", fontSize: 13, fontWeight: 500 }}>
+                {theme === "dark" ? "Dark" : "Light"}
+              </motion.button>
             </motion.div>
 
             <motion.div variants={itemVariants}>

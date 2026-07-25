@@ -280,7 +280,7 @@ export default function CapturePage() {
 
       <ParticleField />
 
-      <div style={{ position: "relative", zIndex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh", maxWidth: 600, margin: "0 auto" }}>
+      <div style={{ position: "relative", zIndex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 16, maxWidth: 600, margin: "0 auto" }}>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>
@@ -298,7 +298,7 @@ export default function CapturePage() {
 
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
           onClick={() => !rawPreview && fileRef.current?.click()}
-          style={{ flex: 1, borderRadius: 16, overflow: "hidden", background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "2px dashed #2a2a2a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, cursor: rawPreview ? "default" : "pointer", position: "relative" }}>
+          style={{ borderRadius: 16, overflow: "hidden", background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "2px dashed #2a2a2a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 340, cursor: rawPreview ? "default" : "pointer", position: "relative" }}>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleCapture} style={{ display: "none" }} />
 
           {processing ? (

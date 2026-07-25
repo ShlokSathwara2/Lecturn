@@ -8,6 +8,7 @@ import { getQueue, removeFromQueue } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
+import BatchAIGeneration from "@/components/BatchAIGeneration"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
@@ -374,6 +375,7 @@ export default function DashboardPage() {
           </h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#059669" : "#f59e0b", flexShrink: 0 }} />
+            {userId && <BatchAIGeneration userId={userId} onDone={() => loadData(userId)} />}
           </div>
         </motion.div>
 

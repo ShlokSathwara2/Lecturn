@@ -14,6 +14,7 @@ interface Capture {
   id: string; chapter_id: string; date_taken: string; image_url?: string | null
   raw_text?: string | null; ai_content_json?: { enrichment?: { explanation?: string } } | null
   ai_status: string; status: string; cleaned_diagram_url?: string | null; original_diagram_crop_url?: string | null
+  is_pinned?: boolean
 }
 
 function getDateLabel(iso: string) {
@@ -121,6 +122,14 @@ export default function ChapterNotesPage() {
     setCaptures((prev) => prev.map((c) => c.id === id ? { ...c, image_url: null } : c))
   }
 
+  async function handlePin(id: string) {
+    const cap = captures.find((c) => c.id === id)
+    if (!cap) return
+    const newPinned = !cap.is_pinned
+    await capturesApi.update(id, { is_pinned: newPinned } as any)
+    setCaptures((prev) => prev.map((c) => c.id === id ? { ...c, is_pinned: newPinned } : c))
+  }
+
   async function handleAddNote() {
     if (!noteText.trim() || !chapter) return
     setAddingNote(true)
@@ -207,7 +216,7 @@ export default function ChapterNotesPage() {
             </span>
             <div style={{ flex: 1, height: 1, background: "#2a2a2a" }} />
           </div>
-          {caps.map((cap) => (
+          {caps.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)).map((cap) => (
             <CaptureBlock
               key={cap.id}
               imageUrl={cap.image_url || undefined}
@@ -219,6 +228,8 @@ export default function ChapterNotesPage() {
               onEdit={(t, ai) => handleEditCapture(cap.id, t, ai)}
               onDelete={() => handleDeleteCapture(cap.id)}
               onDeleteImage={() => handleDeleteImage(cap.id)}
+              onPin={() => handlePin(cap.id)}
+              pinned={cap.is_pinned}
               transcript={audioMap[cap.id]?.transcript || null}
               audioUrl={audioMap[cap.id]?.audio_url || null}
               status={cap.status}
