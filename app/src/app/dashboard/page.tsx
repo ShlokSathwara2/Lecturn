@@ -380,9 +380,9 @@ export default function DashboardPage() {
               style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(139,92,246,0.1)" }}>
               Notes
             </motion.button>
-            <motion.button onClick={() => router.push("/")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              style={{ fontSize: 13, color: "#909090", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a" }}>
-              Home
+            <motion.button onClick={() => router.push("/quiz")} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              style={{ fontSize: 13, color: "#e8e8e8", padding: "10px 14px", borderRadius: 10, border: "1px solid #2a2a2a", background: "rgba(5,150,105,0.1)" }}>
+              Quiz
             </motion.button>
           </div>
         </motion.div>
@@ -414,7 +414,8 @@ export default function DashboardPage() {
               {unassignedCaptures.map((cap, i) => (
                 <motion.div key={cap.id}
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  onClick={() => router.push(`/capture/${cap.id}`)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(245,158,11,0.2)", cursor: "pointer" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {getCaptureLabel(cap)}
@@ -423,8 +424,8 @@ export default function DashboardPage() {
                       {new Date(cap.date_taken).toLocaleDateString()} &middot; {cap.ai_status === "auto_generated" ? "auto generated" : "not generated"}
                     </p>
                   </div>
-                  <motion.button onClick={() => openAssign(cap.id)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 500, flexShrink: 0, whiteSpace: "nowrap" }}>
+                  <motion.button onClick={(e) => { e.stopPropagation(); openAssign(cap.id) }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 500, flexShrink: 0, whiteSpace: "nowrap", position: "relative", zIndex: 2 }}>
                     Assign
                   </motion.button>
                 </motion.div>
@@ -542,10 +543,9 @@ export default function DashboardPage() {
         {!loading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
             style={{ paddingTop: 16, paddingBottom: 32 }}>
-            <motion.button onClick={async () => { await supabase.auth.signOut(); router.push("/auth") }}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            <motion.button onClick={() => router.push("/profile")} whileHover={{ scale: 1.02, x: 4 }}
               style={{ fontSize: 13, color: "#606060", padding: "10px 0", background: "transparent", border: "none", fontFamily: "var(--font-mono)", cursor: "pointer" }}>
-              Sign out &rarr;
+              Profile &rarr;
             </motion.button>
           </motion.div>
         )}
