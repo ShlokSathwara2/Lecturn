@@ -24,9 +24,9 @@ function hexToRgb(hex: string) {
   return { r, g, b }
 }
 
-function spawnParticle(x: number, y: number, color: string) {
+function spawnParticle(x: number, y: number, color: string, speedBoost: number = 1) {
   const angle = Math.random() * Math.PI * 2
-  const speed = 0.4 + Math.random() * 1.0
+  const speed = (0.4 + Math.random() * 1.0) * Math.min(2, speedBoost)
   const rgb = hexToRgb(color)
   activeParticles.push({
     x,
@@ -34,7 +34,7 @@ function spawnParticle(x: number, y: number, color: string) {
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed - 0.3,
     life: 1,
-    maxLife: 0.5 + Math.random() * 0.5,
+    maxLife: 0.6 + Math.random() * 0.6,
     color: `rgba(${rgb.r},${rgb.g},${rgb.b},`,
     size: 2 + Math.random() * 3,
   })
@@ -111,29 +111,33 @@ export default function TouchParticles() {
       const dx = e.clientX - lastPos.current.x
       const dy = e.clientY - lastPos.current.y
       const dist = Math.sqrt(dx * dx + dy * dy)
-      const count = Math.min(2, Math.max(1, Math.floor(dist / 10)))
-      for (let i = 0; i < count; i++) {
-        const t = i / count
-        spawnParticle(lastPos.current.x + dx * t, lastPos.current.y + dy * t, color)
+
+      const spacing = 6
+      const steps = Math.max(1, Math.floor(dist / spacing))
+      const speedBoost = 0.6 + dist / 20
+      for (let i = 0; i < steps; i++) {
+        const t = i / steps
+        spawnParticle(lastPos.current.x + dx * t, lastPos.current.y + dy * t, color, speedBoost)
       }
       lastPos.current = { x: e.clientX, y: e.clientY }
+      if (!animFrame) animFrame = requestAnimationFrame(tick)
     }
 
     function onPointerUp() {
       pointerDown.current = false
     }
 
-    document.addEventListener("pointerdown", onPointerDown)
-    document.addEventListener("pointermove", onPointerMove)
-    document.addEventListener("pointerup", onPointerUp)
-    document.addEventListener("pointercancel", onPointerUp)
+    document.addEventListener("pointerdown", onPointerDown, { capture: true })
+    document.addEventListener("pointermove", onPointerMove, { capture: true })
+    document.addEventListener("pointerup", onPointerUp, { capture: true })
+    document.addEventListener("pointercancel", onPointerUp, { capture: true })
 
     return () => {
       window.removeEventListener("resize", resize)
-      document.removeEventListener("pointerdown", onPointerDown)
-      document.removeEventListener("pointermove", onPointerMove)
-      document.removeEventListener("pointerup", onPointerUp)
-      document.removeEventListener("pointercancel", onPointerUp)
+      document.removeEventListener("pointerdown", onPointerDown, { capture: true })
+      document.removeEventListener("pointermove", onPointerMove, { capture: true })
+      document.removeEventListener("pointerup", onPointerUp, { capture: true })
+      document.removeEventListener("pointercancel", onPointerUp, { capture: true })
       if (animFrame) cancelAnimationFrame(animFrame)
     }
   }, [tick, color])
