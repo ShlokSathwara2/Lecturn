@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
+import { usePageAccent } from "@/lib/AccentContext"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
@@ -71,6 +72,7 @@ const itemVariants = {
 export default function NotesPage() {
   const router = useRouter()
   const supabase = createClient()
+  usePageAccent("#8b5cf6")
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null)

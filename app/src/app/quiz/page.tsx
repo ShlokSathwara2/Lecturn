@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
+import { usePageAccent } from "@/lib/AccentContext"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
@@ -62,6 +63,7 @@ function ParticleField() {
 export default function QuizPage() {
   const router = useRouter()
   const supabase = createClient()
+  usePageAccent("#f59e0b")
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)

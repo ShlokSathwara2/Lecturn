@@ -10,6 +10,7 @@ import { queueCapture } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
 import { audioNotes as audioNotesApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
+import { usePageAccent } from "@/lib/AccentContext"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string }
@@ -68,6 +69,7 @@ export default function CapturePage() {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+  usePageAccent("#10b981")
   const online = useOnlineStatus()
 
   const [user, setUser] = useState<any>(null)

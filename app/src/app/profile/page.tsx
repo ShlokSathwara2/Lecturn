@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
 import { motion } from "framer-motion"
+import { usePageAccent } from "@/lib/AccentContext"
 
 function ParticleField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -68,6 +69,7 @@ const itemVariants = {
 export default function ProfilePage() {
   const router = useRouter()
   const supabase = createClient()
+  usePageAccent("#ec4899")
 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)

@@ -7,6 +7,7 @@ import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesA
 import { getQueue, removeFromQueue } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
 import { motion, AnimatePresence } from "framer-motion"
+import { usePageAccent } from "@/lib/AccentContext"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
@@ -136,6 +137,7 @@ const itemVariants = {
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
+  usePageAccent("#3b82f6")
 
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
