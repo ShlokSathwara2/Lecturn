@@ -192,7 +192,31 @@ export default function Home() {
       <section style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "24px", position: "relative", zIndex: 1, textAlign: "center" }}>
         <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ maxWidth: 640 }}>
           <motion.div variants={itemVariants} style={{ marginBottom: 24 }}>
-            <img src="/icon-192.png" alt="Lecturn" style={{ width: 80, height: 80, margin: "0 auto", borderRadius: 16 }} />
+            <svg width="80" height="80" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: "0 auto", display: "block" }}>
+              <defs>
+                <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#1e3a5f"/>
+                  <stop offset="30%" stopColor="#2563eb"/>
+                  <stop offset="60%" stopColor="#7c3aed" stopOpacity="0.9"/>
+                  <stop offset="100%" stopColor="#06b6d4"/>
+                </linearGradient>
+                <linearGradient id="lg2" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#0f172a"/>
+                  <stop offset="50%" stopColor="#1d4ed8" stopOpacity="0.8"/>
+                  <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.9"/>
+                </linearGradient>
+                <linearGradient id="lg3" x1="50%" y1="0%" x2="50%" y2="100%">
+                  <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.7"/>
+                  <stop offset="100%" stopColor="#1e40af"/>
+                </linearGradient>
+              </defs>
+              <polygon points="60,180 60,60 90,45 90,180" fill="url(#lg1)" opacity="0.95"/>
+              <polygon points="140,180 140,60 110,45 110,180" fill="url(#lg2)" opacity="0.9"/>
+              <polygon points="40,55 100,25 160,55 100,75" fill="url(#lg1)" opacity="0.85"/>
+              <polygon points="40,55 100,25 80,20 30,48" fill="#1e3a5f" opacity="0.7"/>
+              <polygon points="160,55 100,25 120,20 170,48" fill="#06b6d4" opacity="0.6"/>
+              <polygon points="100,65 120,90 100,115 80,90" fill="url(#lg3)" opacity="0.85"/>
+            </svg>
           </motion.div>
           <motion.div variants={itemVariants} style={{ fontSize: 14, fontFamily: "var(--font-mono)", color: "#3b82f6", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 16 }}>
             AI-Powered Lecture Notes
@@ -295,7 +319,12 @@ export default function Home() {
       <footer style={{ padding: "32px 24px", position: "relative", zIndex: 1, borderTop: "1px solid #1a1a1a" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src="/icon-48.png" alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
+            <svg width="24" height="24" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 4 }}>
+              <polygon points="60,180 60,60 90,45 90,180" fill="#2563eb" opacity="0.95"/>
+              <polygon points="140,180 140,60 110,45 110,180" fill="#1d4ed8" opacity="0.9"/>
+              <polygon points="40,55 100,25 160,55 100,75" fill="#2563eb" opacity="0.85"/>
+              <polygon points="100,65 120,90 100,115 80,90" fill="#38bdf8" opacity="0.85"/>
+            </svg>
             <p style={{ fontSize: 13, color: "#606060", fontFamily: "var(--font-mono)" }}>Lecturn &mdash; AI Lecture Notes</p>
           </div>
           <button onClick={() => router.push("/auth")} style={{ fontSize: 13, color: "#909090", padding: "8px 16px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", cursor: "pointer" }}>
