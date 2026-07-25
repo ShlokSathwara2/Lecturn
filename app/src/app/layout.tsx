@@ -3,8 +3,8 @@ import "@/styles/globals.css"
 import PWAClientWrapper from "@/components/PWAWrapper"
 
 export const metadata: Metadata = {
-  title: "SlideScribe",
-  description: "Lecture slides to AI-powered notes",
+  title: "Lecturn",
+  description: "AI-powered lecture notes — snap, study, succeed",
   manifest: "/manifest.json",
 }
 
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#121212" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="SlideScribe" />
+        <meta name="apple-mobile-web-app-title" content="Lecturn" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />

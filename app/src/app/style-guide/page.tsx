@@ -21,7 +21,7 @@ export default function StyleGuidePage() {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: 24, fontFamily: "var(--font-body)" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 4 }}>SlideScribe</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 4 }}>Lecturn</h1>
       <p style={{ fontSize: 14, color: "#909090", fontFamily: "var(--font-mono)", marginBottom: 32 }}>
         Design System v1
       </p>

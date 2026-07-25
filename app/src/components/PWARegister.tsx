@@ -53,7 +53,7 @@ export default function PWARegister() {
     <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, padding: 12, paddingBottom: 24, background: "linear-gradient(to top, #121212, transparent)", pointerEvents: "none" }}>
       <div style={{ pointerEvents: "auto", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 14, background: "#1a2a3a", border: "1px solid #3b82f6" }}>
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8" }}>Install SlideScribe</p>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8" }}>Install Lecturn</p>
           <p style={{ fontSize: 12, color: "#909090" }}>Add to home screen for the best experience</p>
         </div>
         <button onClick={handleInstall} style={{ padding: "10px 18px", borderRadius: 10, background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>

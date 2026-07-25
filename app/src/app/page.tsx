@@ -108,19 +108,22 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 }
 
 const features = [
-  { title: "Snap & Go", desc: "Photograph lecture slides instantly. Our preprocessing engine enhances readability before AI extraction." },
+  { title: "Snap & Go", desc: "Photograph lecture slides instantly. Perspective correction enhances readability before AI extraction." },
   { title: "AI Vision OCR", desc: "Extracts every word, diagram, and formula from slides using multi-model AI (Gemini + OpenRouter fallback)." },
   { title: "Smart Enrichment", desc: "Converts raw text into exam-oriented study notes, summaries, easy explanations, or diagram breakdowns." },
+  { title: "AI Study Guides", desc: "Generate comprehensive combined notes for an entire subject — with diagrams, flowcharts, and key definitions." },
   { title: "Voice Notes", desc: "Record audio alongside slides. Transcribed automatically via Whisper and synced to your notes." },
-  { title: "Search & Organize", desc: "Keyword and semantic search across all notes. Auto-detect chapters and organize by subject." },
-  { title: "Offline & Export", desc: "Queue captures when offline, sync later. Export as PDF, DOCX, RTF, TXT, or Evernote." },
+  { title: "Dark & Light Mode", desc: "Toggle between dark and light themes. Each page adapts its accent color for a fluid, cohesive feel." },
+  { title: "Search & Organize", desc: "Keyword and semantic search across all notes. Auto-detect chapters, pin favorites, and organize by subject." },
+  { title: "Export Anywhere", desc: "Export as PDF, DOCX, RTF, TXT, Evernote, Samsung Notes, or Apple Notes — with or without images." },
+  { title: "Quiz Yourself", desc: "AI-generated flashcards from your notes. Test retention and identify gaps in your understanding." },
 ]
 
 const steps = [
   { num: "01", title: "Capture", desc: "Take a photo of your lecture slide or type a note." },
   { num: "02", title: "Process", desc: "AI extracts text, identifies diagrams, and enriches content." },
-  { num: "03", title: "Review", desc: "Edit, organize into chapters, add voice notes." },
-  { num: "04", title: "Revise", desc: "Quiz yourself, export your notes, or search across everything." },
+  { num: "03", title: "Study", desc: "Generate combined study guides, pin key notes, quiz yourself." },
+  { num: "04", title: "Export", desc: "Download as PDF, DOCX, or send directly to Samsung/Apple Notes." },
 ]
 
 export default function Home() {
@@ -188,6 +191,9 @@ export default function Home() {
       {/* ── Hero ── */}
       <section style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "24px", position: "relative", zIndex: 1, textAlign: "center" }}>
         <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ maxWidth: 640 }}>
+          <motion.div variants={itemVariants} style={{ marginBottom: 24 }}>
+            <img src="/logo.svg" alt="Lecturn" style={{ width: 80, height: 80, margin: "0 auto" }} />
+          </motion.div>
           <motion.div variants={itemVariants} style={{ fontSize: 14, fontFamily: "var(--font-mono)", color: "#3b82f6", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 16 }}>
             AI-Powered Lecture Notes
           </motion.div>
@@ -196,7 +202,7 @@ export default function Home() {
             <span className="gradient-text">Supercharged</span>
           </motion.h1>
           <motion.p variants={itemVariants} style={{ fontSize: 17, color: "#909090", lineHeight: 1.7, marginBottom: 36, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-            Snap a photo of any slide. AI extracts text, diagrams, and generates study-ready notes — enriched, searchable, and exportable.
+            Snap a photo of any slide. AI extracts text, diagrams, and generates comprehensive study guides — enriched, searchable, and exportable.
           </motion.p>
           <motion.div variants={itemVariants} style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <motion.button onClick={() => router.push("/auth")} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -288,7 +294,10 @@ export default function Home() {
       {/* ── Footer ── */}
       <footer style={{ padding: "32px 24px", position: "relative", zIndex: 1, borderTop: "1px solid #1a1a1a" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <p style={{ fontSize: 13, color: "#606060", fontFamily: "var(--font-mono)" }}>SlideScribe &mdash; AI Lecture Notes</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img src="/logo.svg" alt="" style={{ width: 24, height: 24 }} />
+            <p style={{ fontSize: 13, color: "#606060", fontFamily: "var(--font-mono)" }}>Lecturn &mdash; AI Lecture Notes</p>
+          </div>
           <button onClick={() => router.push("/auth")} style={{ fontSize: 13, color: "#909090", padding: "8px 16px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", cursor: "pointer" }}>
             Sign In
           </button>

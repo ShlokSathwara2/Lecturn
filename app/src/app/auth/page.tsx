@@ -164,7 +164,7 @@ export default function AuthPage() {
         <div style={{ padding: "40px 32px", borderRadius: 20, background: "rgba(26,26,26,0.7)", backdropFilter: "blur(20px)", border: "1px solid rgba(59,130,246,0.1)" }}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <p style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#3b82f6", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
-              SlideScribe
+              Lecturn
             </p>
             <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>
               {mode === "signin" ? "Welcome back" : "Create account"}
@@ -193,8 +193,8 @@ export default function AuthPage() {
                   whileFocus={{ borderColor: "#3b82f6", boxShadow: "0 0 0 3px rgba(59,130,246,0.1)" }}
                   style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", boxSizing: "border-box", transition: "all 0.2s ease", paddingRight: 48 }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#606060", cursor: "pointer", fontSize: 18, padding: 4 }}>
-                  {showPassword ? "\uD83D\uDC41" : "\uD83D\uDC41\u200D\uD83D\uDFE8"}
+                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#606060", cursor: "pointer", fontSize: 12, padding: 4, fontFamily: "var(--font-mono)" }}>
+                  {showPassword ? "HIDE" : "SHOW"}
                 </button>
               </div>
             </motion.div>
@@ -210,8 +210,8 @@ export default function AuthPage() {
                       whileFocus={{ borderColor: "#3b82f6", boxShadow: "0 0 0 3px rgba(59,130,246,0.1)" }}
                       style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1px solid #2a2a2a", background: "#1a1a1a", fontSize: 16, color: "#e8e8e8", outline: "none", boxSizing: "border-box", transition: "all 0.2s ease", paddingRight: 48 }} />
                     <button type="button" onClick={() => setShowConfirm(!showConfirm)}
-                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#606060", cursor: "pointer", fontSize: 18, padding: 4 }}>
-                      {showConfirm ? "\uD83D\uDC41" : "\uD83D\uDC41\u200D\uD83D\uDFE8"}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#606060", cursor: "pointer", fontSize: 12, padding: 4, fontFamily: "var(--font-mono)" }}>
+                      {showConfirm ? "HIDE" : "SHOW"}
                     </button>
                   </div>
                 </motion.div>

@@ -1,13 +1,13 @@
 {
-  "name": "SlideScribe",
-  "short_name": "SlideScribe",
+  "name": "Lecturn",
+  "short_name": "Lecturn",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#121212",
   "theme_color": "#121212",
-  "description": "Lecture slides to AI-powered notes",
+  "description": "AI-powered lecture notes — snap, study, succeed",
   "categories": ["education", "productivity"],
   "icons": [
     { "src": "/icon-48.png", "sizes": "48x48", "type": "image/png" },
