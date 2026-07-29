@@ -219,28 +219,34 @@ export default function DashboardPage() {
   async function loadData(uid?: string) {
     setLoading(true)
     try {
-      const list = await subjectsApi.list(uid || "")
+      const [list, unassigned] = await Promise.all([
+        subjectsApi.list(uid || ""),
+        capturesApi.unassigned(uid).catch(() => []),
+      ])
       setSubjects(list)
+      setUnassignedCaptures(unassigned)
+
+      const chapterResults = await Promise.all(list.map((s: Subject) => chaptersApi.list(s.id).catch(() => [])))
+
+      const countMap: Record<string, number> = {}
+      list.forEach((s: Subject, i: number) => {
+        countMap[s.id] = chapterResults[i].length
+      })
+      setChaptersCountBySubject(countMap)
+
+      const captureResults = await Promise.all(
+        chapterResults.flat().map((ch: Chapter) => capturesApi.list(ch.id).catch(() => []))
+      )
 
       const notesMap: Record<string, number> = {}
-      const countMap: Record<string, number> = {}
-      for (const s of list) {
-        const chs = await chaptersApi.list(s.id)
-        countMap[s.id] = chs.length
-        let noteCount = 0
-        for (const ch of chs) {
-          const caps = await capturesApi.list(ch.id)
-          noteCount += caps.length
-        }
-        notesMap[s.id] = noteCount
-      }
-      setChaptersCountBySubject(countMap)
+      list.forEach((s: Subject) => { notesMap[s.id] = 0 })
+      chapterResults.forEach((chs: Chapter[], i: number) => {
+        const startIdx = chapterResults.slice(0, i).reduce((sum, arr) => sum + arr.length, 0)
+        chs.forEach((ch: Chapter, j: number) => {
+          notesMap[ch.subject_id] = (notesMap[ch.subject_id] || 0) + captureResults[startIdx + j].length
+        })
+      })
       setSubjectsNotesMap(notesMap)
-
-      try {
-        const unassigned = await capturesApi.unassigned(uid)
-        setUnassignedCaptures(unassigned)
-      } catch {}
     } catch {}
     setLoading(false)
   }

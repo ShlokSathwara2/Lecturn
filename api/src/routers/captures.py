@@ -24,7 +24,12 @@ async def list_captures(chapter_id: str = "", user_id: str = ""):
 
 @router.get("/unassigned")
 async def list_unassigned_captures(user_id: str = ""):
-    data = supabase.table("captures").select("*").is_("subject_id", "null").order("date_taken", desc=True).execute()
+    query = supabase.table("captures").select("*").is_("chapter_id", "null")
+    if user_id:
+        subject_ids = [s["id"] for s in supabase.table("subjects").select("id").eq("user_id", user_id).execute().data]
+        if subject_ids:
+            query = query.not_.in_("subject_id", subject_ids)
+    data = query.order("date_taken", desc=True).execute()
     return data.data
 
 @router.post("", status_code=201)
