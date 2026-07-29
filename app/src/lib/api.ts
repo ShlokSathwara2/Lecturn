@@ -1,16 +1,33 @@
 const PROXY = "/api/proxy"
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${PROXY}?path=${encodeURIComponent(path)}`, {
-    method: options?.method || "GET",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: options?.body,
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`API ${res.status}: ${text}`)
+async function request<T>(path: string, options?: RequestInit, timeoutMs: number = 30000): Promise<T> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${PROXY}?path=${encodeURIComponent(path)}`, {
+      method: options?.method || "GET",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: options?.body,
+      signal: controller.signal,
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      let detail = text
+      try {
+        const json = JSON.parse(text)
+        if (json.detail) detail = typeof json.detail === "string" ? json.detail : JSON.stringify(json.detail)
+      } catch {}
+      throw new Error(detail || `API ${res.status}`)
+    }
+    return res.json()
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.")
+    }
+    throw err
+  } finally {
+    clearTimeout(id)
   }
-  return res.json()
 }
 
 // Subjects
@@ -117,7 +134,7 @@ export const audioNotes = {
 
 export const aiNotes = {
   generate: (subjectId: string, userId: string) =>
-    request<any>("/ai-notes/generate", { method: "POST", body: JSON.stringify({ subject_id: subjectId, user_id: userId }) }),
+    request<any>("/ai-notes/generate", { method: "POST", body: JSON.stringify({ subject_id: subjectId, user_id: userId }) }, 130000),
   get: (subjectId: string) =>
     request<any>(`/ai-notes/${subjectId}`),
   delete: (subjectId: string) =>

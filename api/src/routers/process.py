@@ -66,7 +66,14 @@ async def process_single_capture(capture_id: str, format: str = "exam-oriented",
         image_hash = await compute_image_hash(image_url)
 
     if image_hash and not existing_raw:
-        existing_hash = supabase.table("captures").select("id, image_hash").neq("id", capture_id).execute().data
+        subject_id = capture.data.get("subject_id")
+        chapter_id = capture.data.get("chapter_id")
+        query = supabase.table("captures").select("id, image_hash").neq("id", capture_id).not_.is_("image_hash", "null")
+        if subject_id:
+            query = query.eq("subject_id", subject_id)
+        elif chapter_id:
+            query = query.eq("chapter_id", chapter_id)
+        existing_hash = query.limit(200).execute().data or []
         for cap in existing_hash:
             if cap.get("image_hash"):
                 dist = hamming_distance(image_hash, cap["image_hash"])

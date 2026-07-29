@@ -110,10 +110,12 @@ export default function NotesPage() {
         setChaptersBySubject((prev) => ({ ...prev, [subjectId]: chs }))
 
         const counts: Record<string, number> = {}
-        for (const ch of chs) {
-          const caps = await capturesApi.list(ch.id)
-          counts[ch.id] = caps.length
-        }
+        const capResults = await Promise.all(
+          chs.map((ch: Chapter) => capturesApi.list(ch.id).then((caps: any[]) => ({ id: ch.id, count: caps.length })))
+        )
+        capResults.forEach((res) => {
+          counts[res.id] = res.count
+        })
         setChapterNotesCount((prev) => ({ ...prev, ...counts }))
 
         try {

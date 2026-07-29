@@ -26,18 +26,21 @@ interface Props {
 export default function ExportDropdown({ getUrl, filename, label = "Export" }: Props) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState("")
+  const [exportError, setExportError] = useState<string | null>(null)
   const [section, setSection] = useState<"formats" | "apps">("formats")
 
   async function handle(format: string, includeImages: boolean) {
     setBusy(format)
-    setOpen(false)
+    setExportError(null)
     try {
       const ext = FORMATS.find((f) => f.key === format)?.ext || NOTES_APPS.find((n) => n.key === format && n.desc.includes("PDF" ))?.ext || `.${format}`
       await exportApi.download(getUrl(format, includeImages), `${filename}${ext}`)
+      setOpen(false)
     } catch (e: any) {
-      alert("Export failed: " + e.message)
+      setExportError(e?.message || "Export failed. Try again.")
+    } finally {
+      setBusy("")
     }
-    setBusy("")
   }
 
   return (
@@ -66,6 +69,12 @@ export default function ExportDropdown({ getUrl, filename, label = "Export" }: P
                   Notes Apps
                 </button>
               </div>
+
+              {exportError && (
+                <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.1)", borderBottom: "1px solid rgba(239,68,68,0.2)" }}>
+                  <p style={{ fontSize: 12, color: "#ef4444", margin: 0 }}>{exportError}</p>
+                </div>
+              )}
 
               {section === "formats" && (
                 <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 2 }}>

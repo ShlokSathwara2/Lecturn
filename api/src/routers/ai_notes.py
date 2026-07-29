@@ -58,7 +58,11 @@ async def generate_notes(body: GenerateNotesRequest):
     try:
         result = await generate_combined_notes(subject["name"], chapters_data)
     except Exception as e:
-        raise HTTPException(500, f"AI generation failed: {e}")
+        msg = str(e)
+        # Rate limit or timeout → 503 so frontend knows to retry
+        if "rate limited" in msg.lower() or "timed out" in msg.lower() or "timeout" in msg.lower():
+            raise HTTPException(503, f"Temporarily unavailable: {msg}")
+        raise HTTPException(500, f"AI generation failed: {msg}")
 
     content_json = {
         "combined_notes": True,

@@ -59,11 +59,13 @@ async def call_gemini(image_url: str) -> dict:
     )
     return parse_json(response.text)
 
-async def call_openrouter(model: str, image_url: str) -> dict:
+async def call_openrouter(model: str, image_url: str, custom_prompt: str | None = None) -> dict:
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
+
+    prompt_text = custom_prompt or PROMPT
 
     body = {
         "model": model,
@@ -72,7 +74,7 @@ async def call_openrouter(model: str, image_url: str) -> dict:
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": image_url}},
-                    {"type": "text", "text": PROMPT},
+                    {"type": "text", "text": prompt_text},
                 ],
             }
         ],

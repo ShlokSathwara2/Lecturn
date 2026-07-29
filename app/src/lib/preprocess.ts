@@ -237,35 +237,60 @@ export interface PreprocessResult {
 }
 
 export async function preprocess(file: File): Promise<PreprocessResult> {
-  const img = await loadImage(file)
-  const { canvas, ctx } = getCanvasCtx(img.width, img.height)
+  try {
+    const img = await loadImage(file)
+    
+    // Downscale large camera images first (max 1200px) to prevent OOM and lag on mobile devices
+    let targetW = img.width
+    let targetH = img.height
+    const PREPROCESS_MAX = 1200
+    if (targetW > PREPROCESS_MAX || targetH > PREPROCESS_MAX) {
+      const ratio = Math.min(PREPROCESS_MAX / targetW, PREPROCESS_MAX / targetH)
+      targetW = Math.round(targetW * ratio)
+      targetH = Math.round(targetH * ratio)
+    }
 
-  ctx.drawImage(img, 0, 0)
-  const originalUrl = canvas.toDataURL("image/jpeg", 0.9)
+    const { canvas, ctx } = getCanvasCtx(targetW, targetH)
+    ctx.drawImage(img, 0, 0, targetW, targetH)
+    URL.revokeObjectURL(img.src)
 
-  const gray = toGrayscale(ctx.getImageData(0, 0, img.width, img.height).data, img.width * img.height * 4)
-  const edges = sobelEdge(gray, img.width, img.height)
-  const corners = detectCorners(edges, img.width, img.height)
+    const originalBlob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.85))
+    const originalUrl = URL.createObjectURL(originalBlob)
 
-  let workCtx = ctx
-  let workW = img.width
-  let workH = img.height
+    let processedBlob: Blob
+    try {
+      const gray = toGrayscale(ctx.getImageData(0, 0, targetW, targetH).data, targetW * targetH * 4)
+      const edges = sobelEdge(gray, targetW, targetH)
+      const corners = detectCorners(edges, targetW, targetH)
 
-  const transformed = perspectiveTransform(ctx, img.width, img.height, corners)
-  if (transformed) {
-    workCtx = transformed.ctx
-    workW = transformed.canvas.width
-    workH = transformed.canvas.height
+      let workCtx = ctx
+      let workW = targetW
+      let workH = targetH
+
+      const transformed = perspectiveTransform(ctx, targetW, targetH, corners)
+      if (transformed) {
+        workCtx = transformed.ctx
+        workW = transformed.canvas.width
+        workH = transformed.canvas.height
+      }
+
+      const cropped = autoCrop(workCtx, workW, workH)
+      processedBlob = await compressAndResize(cropped.ctx, cropped.w, cropped.h)
+    } catch (procErr) {
+      console.warn("Advanced preprocessing failed, falling back to basic resized image", procErr)
+      processedBlob = originalBlob
+    }
+
+    const processedUrl = URL.createObjectURL(processedBlob)
+    return { originalBlob, processedBlob, originalUrl, processedUrl }
+  } catch (err) {
+    console.error("Image loading/preprocessing failed, using raw file fallback", err)
+    const originalUrl = URL.createObjectURL(file)
+    return {
+      originalBlob: file,
+      processedBlob: file,
+      originalUrl,
+      processedUrl: originalUrl,
+    }
   }
-
-  const cropped = autoCrop(workCtx, workW, workH)
-  const processedBlob = await compressAndResize(cropped.ctx, cropped.w, cropped.h)
-
-  const processedUrl = URL.createObjectURL(processedBlob)
-
-  const originalBlob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.9))
-
-  URL.revokeObjectURL(img.src)
-
-  return { originalBlob, processedBlob, originalUrl, processedUrl }
 }

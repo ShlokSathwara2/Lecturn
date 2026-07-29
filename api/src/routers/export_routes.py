@@ -68,22 +68,25 @@ async def _build_export(rows: list[dict], title: str, format: str, include_image
     filename = title.replace(" ", "_").replace("/", "-") + EXT_MAP[format]
     mime = MIME_MAP[format]
 
-    if format == "txt":
-        content = build_txt(rows, title)
-        return Response(content=content.encode("utf-8"), media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    try:
+        if format == "txt":
+            content = build_txt(rows, title)
+            return Response(content=content.encode("utf-8"), media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
-    if format == "rtf":
-        content = await build_rtf(rows, title, include_images)
-        return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+        if format == "rtf":
+            content = await build_rtf(rows, title, include_images)
+            return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
-    if format == "docx":
-        content = await build_docx(rows, title, include_images)
-        return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+        if format == "docx":
+            content = await build_docx(rows, title, include_images)
+            return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
-    if format == "enex":
-        content = await build_enex(rows, title, include_images)
-        return Response(content=content.encode("utf-8"), media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+        if format == "enex":
+            content = await build_enex(rows, title, include_images)
+            return Response(content=content.encode("utf-8"), media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
-    if format == "pdf":
-        content = await build_pdf(rows, title, include_images)
-        return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+        if format == "pdf":
+            content = await build_pdf(rows, title, include_images)
+            return Response(content=content, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    except Exception as e:
+        raise HTTPException(500, f"Export failed: {str(e)}")

@@ -38,10 +38,12 @@ export default function BatchAIGeneration({ userId, onDone }: Props) {
       const chs = await chaptersApi.list(subject.id)
       setChapters(chs)
       const counts: Record<string, number> = {}
-      for (const ch of chs) {
-        const caps = await capturesApi.list(ch.id)
-        counts[ch.id] = caps.length
-      }
+      const capResults = await Promise.all(
+        chs.map((ch: Chapter) => capturesApi.list(ch.id).then((caps: any[]) => ({ id: ch.id, count: caps.length })))
+      )
+      capResults.forEach((res) => {
+        counts[res.id] = res.count
+      })
       setSlideCounts(counts)
     } catch {
       setError("Failed to load chapters")

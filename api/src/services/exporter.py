@@ -1,4 +1,4 @@
-import io, os, base64, re, hashlib
+import io, os, base64, re, hashlib, tempfile, asyncio
 from typing import Optional
 import httpx
 from docx import Document
@@ -12,19 +12,43 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 STORAGE_BUCKET = "slide-images"
 
 
-async def _fetch_image_bytes(url: str) -> Optional[bytes]:
+async def _fetch_image_bytes(url: str, client: Optional[httpx.AsyncClient] = None) -> Optional[bytes]:
     if not url:
         return None
     if url.startswith("/"):
         url = f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}{url}"
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
-            resp = await http.get(url)
+        if client:
+            resp = await client.get(url, timeout=10)
             if resp.status_code == 200:
                 return resp.content
+        else:
+            async with httpx.AsyncClient(timeout=10) as http:
+                resp = await http.get(url)
+                if resp.status_code == 200:
+                    return resp.content
     except Exception:
         pass
     return None
+
+
+async def _prefetch_all_images(rows: list[dict]) -> dict[str, Optional[bytes]]:
+    urls = list(set([r["image_url"] for r in rows if r.get("image_url")]))
+    if not urls:
+        return {}
+
+    image_map: dict[str, Optional[bytes]] = {}
+    sem = asyncio.Semaphore(5)
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        async def fetch_one(u: str):
+            async with sem:
+                data = await _fetch_image_bytes(u, client=client)
+                image_map[u] = data
+
+        await asyncio.gather(*(fetch_one(u) for u in urls), return_exceptions=True)
+
+    return image_map
 
 
 def _image_ext(url: str) -> str:
@@ -113,6 +137,7 @@ def _rtf_encode_image(data: bytes, ext: str) -> str:
 
 
 async def build_rtf(rows: list[dict], title: str, include_images: bool = True) -> bytes:
+    image_map = await _prefetch_all_images(rows) if include_images else {}
     BS = "\\"
     def esc(t):
         return _escape_rtf(t)
@@ -131,7 +156,7 @@ async def build_rtf(rows: list[dict], title: str, include_images: bool = True) -
             current_chapter = r["chapter_title"]
             blocks.append(cmd("pard") + cmd("b") + cmd("fs32") + cmd("cf1") + " " + esc(current_chapter) + cmd("b0") + cmd("par") + cmd("par"))
         if include_images and r["image_url"]:
-            img_data = await _fetch_image_bytes(r["image_url"])
+            img_data = image_map.get(r["image_url"])
             if img_data:
                 blocks.append(cmd("pard") + cmd("qc") + " " + _rtf_encode_image(img_data, _image_ext(r["image_url"])) + cmd("par") + cmd("par"))
         if r["raw_text"]:
@@ -151,6 +176,7 @@ async def build_rtf(rows: list[dict], title: str, include_images: bool = True) -
 # DOCX
 # ----------------------------------------------------------------
 async def build_docx(rows: list[dict], title: str, include_images: bool = True) -> bytes:
+    image_map = await _prefetch_all_images(rows) if include_images else {}
     doc = Document()
     style = doc.styles["Normal"]
     style.font.name = "Calibri"
@@ -164,7 +190,7 @@ async def build_docx(rows: list[dict], title: str, include_images: bool = True) 
             doc.add_heading(current_chapter, 1)
 
         if include_images and r["image_url"]:
-            img_data = await _fetch_image_bytes(r["image_url"])
+            img_data = image_map.get(r["image_url"])
             if img_data:
                 try:
                     doc.add_picture(io.BytesIO(img_data), width=Inches(5))
@@ -199,13 +225,14 @@ def _escape_xml(text: str) -> str:
 
 
 async def build_enex(rows: list[dict], title: str, include_images: bool = True) -> str:
+    image_map = await _prefetch_all_images(rows) if include_images else {}
     notes_xml = []
     for r in rows:
         body_parts = []
         img_resources = []
 
         if include_images and r["image_url"]:
-            img_data = await _fetch_image_bytes(r["image_url"])
+            img_data = image_map.get(r["image_url"])
             if img_data:
                 ext = _image_ext(r["image_url"])
                 mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif"}.get(ext, "image/png")
@@ -286,6 +313,7 @@ def _find_font_bold() -> str:
 
 
 async def build_pdf(rows: list[dict], title: str, include_images: bool = True) -> bytes:
+    image_map = await _prefetch_all_images(rows) if include_images else {}
     pdf = FPDF()
     pdf.add_page()
 
@@ -304,6 +332,8 @@ async def build_pdf(rows: list[dict], title: str, include_images: bool = True) -
     pdf.cell(0, 12, title, new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(4)
 
+    temp_dir = tempfile.gettempdir()
+
     current_chapter = ""
     for r in rows:
         if r["chapter_title"] != current_chapter:
@@ -313,12 +343,11 @@ async def build_pdf(rows: list[dict], title: str, include_images: bool = True) -
             pdf.ln(2)
 
         if include_images and r["image_url"]:
-            img_data = await _fetch_image_bytes(r["image_url"])
+            img_data = image_map.get(r["image_url"])
             if img_data:
                 ext = _image_ext(r["image_url"])
-                fname = f"/tmp/_export_img_{r['id']}.{ext}"
+                fname = os.path.join(temp_dir, f"_export_img_{r['id']}.{ext}")
                 try:
-                    os.makedirs("/tmp", exist_ok=True)
                     with open(fname, "wb") as f:
                         f.write(img_data)
                     pdf.image(fname, w=pdf.w - 20)

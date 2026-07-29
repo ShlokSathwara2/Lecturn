@@ -17,26 +17,40 @@ async function proxyRequest(request: NextRequest, method: string) {
     body = await request.arrayBuffer()
   }
 
-  const res = await fetch(`${API_BASE}${targetPath}`, { method, headers, body })
-
-  const resContentType = res.headers.get("content-type") || "application/json"
-
-  if (resContentType.includes("application/json")) {
-    const data = await res.text()
-    return new NextResponse(data, {
-      status: res.status,
-      headers: { "Content-Type": "application/json" },
+  try {
+    const res = await fetch(`${API_BASE}${targetPath}`, {
+      method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(120_000),
     })
-  }
 
-  const arrayBuf = await res.arrayBuffer()
-  return new NextResponse(arrayBuf, {
-    status: res.status,
-    headers: {
-      "Content-Type": resContentType,
-      "Content-Disposition": res.headers.get("content-disposition") || "",
-    },
-  })
+    const resContentType = res.headers.get("content-type") || "application/json"
+
+    if (resContentType.includes("application/json")) {
+      const data = await res.text()
+      return new NextResponse(data, {
+        status: res.status,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    const arrayBuf = await res.arrayBuffer()
+    return new NextResponse(arrayBuf, {
+      status: res.status,
+      headers: {
+        "Content-Type": resContentType,
+        "Content-Disposition": res.headers.get("content-disposition") || "",
+      },
+    })
+  } catch (error: any) {
+    console.error("Proxy request failed:", error)
+    const isTimeout = error?.name === "TimeoutError" || error?.name === "AbortError"
+    return NextResponse.json(
+      { detail: isTimeout ? "Backend request timed out (120s limit)" : "Backend proxy connection failed" },
+      { status: isTimeout ? 504 : 502 }
+    )
+  }
 }
 
 export async function GET(request: NextRequest) {
