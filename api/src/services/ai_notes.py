@@ -70,11 +70,11 @@ def build_chapters_block(chapters_data: list[dict]) -> str:
             if total_chars >= MAX_TOTAL_CHARS:
                 cap_texts.append(f"  Slide {i}: [truncated — content limit reached]")
                 continue
-            raw = cap.get("raw_text", "").strip()
-            ai = cap.get("ai_content_json", {})
-            enrichment = ai.get("enrichment", {}) if ai else {}
-            explanation = enrichment.get("explanation", "") if enrichment else ""
-            key_points = enrichment.get("key_points", []) if enrichment else []
+            raw = (cap.get("raw_text") or "").strip()
+            ai = cap.get("ai_content_json") or {}
+            enrichment = ai.get("enrichment") or {} if isinstance(ai, dict) else {}
+            explanation = (enrichment.get("explanation") or "") if isinstance(enrichment, dict) else ""
+            key_points = (enrichment.get("key_points") or []) if isinstance(enrichment, dict) else []
             parts = [f"  Slide {i}:"]
             # Prefer AI enrichment over raw text as it's more concise
             if explanation:

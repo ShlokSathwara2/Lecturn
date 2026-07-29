@@ -66,14 +66,14 @@ def _rtf_blip(ext: str) -> str:
 # ----------------------------------------------------------------
 async def fetch_captures(subject_id: Optional[str] = None, chapter_id: Optional[str] = None) -> list[dict]:
     if chapter_id:
-        chapters = [{"id": chapter_id}]
+        chapters = supabase.table("chapters").select("id, title").eq("id", chapter_id).execute().data or []
     else:
-        chapters = supabase.table("chapters").select("id, title").eq("subject_id", subject_id).execute().data
+        chapters = supabase.table("chapters").select("id, title").eq("subject_id", subject_id).execute().data or []
     if not chapters:
         return []
 
     chapter_ids = [ch["id"] for ch in chapters]
-    chapter_map = {ch["id"]: ch["title"] for ch in chapters}
+    chapter_map = {ch["id"]: ch.get("title", "") for ch in chapters}
 
     caps = supabase.table("captures").select(
         "id, chapter_id, raw_text, ai_content_json, image_url, cleaned_diagram_url, original_diagram_crop_url, date_taken, ai_status"

@@ -79,7 +79,7 @@ async def generate_notes(body: GenerateNotesRequest):
         supabase.table("captures")
         .select("id")
         .eq("subject_id", body.subject_id)
-        .eq("ai_status", "ai_notes")
+        .in_("ai_status", ["ai_notes", "manually_generated"])
         .execute()
     )
 
@@ -95,7 +95,7 @@ async def generate_notes(body: GenerateNotesRequest):
                 "subject_id": body.subject_id,
                 "raw_text": result["explanation"][:5000],
                 "ai_content_json": content_json,
-                "ai_status": "ai_notes",
+                "ai_status": "manually_generated",
                 "status": "processed",
             }).execute()
         )
@@ -122,7 +122,7 @@ async def get_notes(subject_id: str):
         supabase.table("captures")
         .select("*")
         .eq("subject_id", subject_id)
-        .eq("ai_status", "ai_notes")
+        .in_("ai_status", ["ai_notes", "manually_generated"])
         .execute()
     )
 
@@ -144,7 +144,7 @@ async def delete_notes(subject_id: str):
         supabase.table("captures")
         .select("id")
         .eq("subject_id", subject_id)
-        .eq("ai_status", "ai_notes")
+        .in_("ai_status", ["ai_notes", "manually_generated"])
         .execute()
     )
     if not existing:
