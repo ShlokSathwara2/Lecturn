@@ -321,9 +321,9 @@ async def build_pdf(rows: list[dict], title: str, include_images: bool = True) -
     font_bold_path = _find_font_bold()
 
     if font_path:
-        pdf.add_font("Custom", "", font_path, uni=True)
+        pdf.add_font("Custom", "", font_path)
     if font_bold_path:
-        pdf.add_font("Custom", "B", font_bold_path, uni=True)
+        pdf.add_font("Custom", "B", font_bold_path)
 
     font_name = "Custom" if font_path else "Helvetica"
     font_bold = "Custom" if font_bold_path else "Helvetica"

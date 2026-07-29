@@ -259,25 +259,15 @@ export async function preprocess(file: File): Promise<PreprocessResult> {
 
     let processedBlob: Blob
     try {
-      const gray = toGrayscale(ctx.getImageData(0, 0, targetW, targetH).data, targetW * targetH * 4)
-      const edges = sobelEdge(gray, targetW, targetH)
-      const corners = detectCorners(edges, targetW, targetH)
-
-      let workCtx = ctx
-      let workW = targetW
-      let workH = targetH
-
-      const transformed = perspectiveTransform(ctx, targetW, targetH, corners)
-      if (transformed) {
-        workCtx = transformed.ctx
-        workW = transformed.canvas.width
-        workH = transformed.canvas.height
-      }
-
-      const cropped = autoCrop(workCtx, workW, workH)
+      // Perspective/deskew correction was removed here — it required ~160,000 individual
+      // ctx.drawImage() calls per photo (Sobel edge detection + corner detection + a
+      // per-tile perspective warp), which blocked the main thread long enough to freeze
+      // or crash the tab on many phones. Vision models handle mild photo skew fine on
+      // their own, so we keep only the cheap, single-pass steps: crop + levels + compress.
+      const cropped = autoCrop(ctx, targetW, targetH)
       processedBlob = await compressAndResize(cropped.ctx, cropped.w, cropped.h)
     } catch (procErr) {
-      console.warn("Advanced preprocessing failed, falling back to basic resized image", procErr)
+      console.warn("Preprocessing failed, falling back to basic resized image", procErr)
       processedBlob = originalBlob
     }
 
