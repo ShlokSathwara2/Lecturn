@@ -82,7 +82,7 @@ export default function QuizPage() {
   const remaining = cards.length - 1
 
   return (
-    <main style={{ padding: 16, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", gap: 16 }} className="page-with-nav">
+    <main style={{ padding: 16, paddingBottom: 100, fontFamily: "var(--font-body)", maxWidth: 600, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", gap: 16 }} className="page-with-nav">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={() => router.push("/dashboard")} style={{ fontSize: 13, color: "#909090", padding: "10px 16px", borderRadius: 10, border: "1px solid #2a2a2a", minHeight: 44 }}>
           &larr; Dashboard

@@ -4,56 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
 import { motion, useInView } from "framer-motion"
-
-function ParticleField() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const c = canvasRef.current
-    if (!c) return
-    const ctx = c.getContext("2d")
-    if (!ctx) return
-    let w = c.width = innerWidth
-    let h = c.height = innerHeight
-    const dots: { x: number; y: number; vx: number; vy: number; r: number }[] = []
-    for (let i = 0; i < 60; i++) {
-      dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, r: Math.random() * 1.5 + 0.5 })
-    }
-    let id: number
-    function draw() {
-      ctx!.fillStyle = "rgba(18,18,18,0.15)"
-      ctx!.fillRect(0, 0, w, h)
-      for (const d of dots) {
-        d.x += d.vx; d.y += d.vy
-        if (d.x < 0 || d.x > w) d.vx *= -1
-        if (d.y < 0 || d.y > h) d.vy *= -1
-        ctx!.beginPath()
-        ctx!.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx!.fillStyle = "rgba(59,130,246,0.3)"
-        ctx!.fill()
-      }
-      for (let i = 0; i < dots.length; i++) {
-        for (let j = i + 1; j < dots.length; j++) {
-          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 150) {
-            ctx!.beginPath()
-            ctx!.moveTo(dots[i].x, dots[i].y)
-            ctx!.lineTo(dots[j].x, dots[j].y)
-            ctx!.strokeStyle = `rgba(59,130,246,${0.08 * (1 - dist / 150)})`
-            ctx!.lineWidth = 0.5
-            ctx!.stroke()
-          }
-        }
-      }
-      id = requestAnimationFrame(draw)
-    }
-    draw()
-    const ro = () => { w = c.width = innerWidth; h = c.height = innerHeight }
-    addEventListener("resize", ro)
-    return () => { cancelAnimationFrame(id); removeEventListener("resize", ro) }
-  }, [])
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />
-}
+import ParticleField from "@/components/ParticleField"
 
 function AnimatedOrbs() {
   return (
@@ -184,7 +135,7 @@ export default function Home() {
         html { scroll-behavior: smooth; }
       `}</style>
 
-      <ParticleField />
+      <ParticleField color="59,130,246" dotCount={60} connectionDistance={150} />
       <AnimatedOrbs />
       <FloatingShapes />
 

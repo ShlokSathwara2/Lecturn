@@ -11,59 +11,10 @@ import { useOnlineStatus } from "@/lib/useOnlineStatus"
 import { audioNotes as audioNotesApi } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
+import ParticleField from "@/components/ParticleField"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string }
-
-function ParticleField() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const c = canvasRef.current
-    if (!c) return
-    const ctx = c.getContext("2d")
-    if (!ctx) return
-    let w = c.width = innerWidth
-    let h = c.height = innerHeight
-    const dots: { x: number; y: number; vx: number; vy: number; r: number }[] = []
-    for (let i = 0; i < 30; i++) {
-      dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15, r: Math.random() * 1 + 0.3 })
-    }
-    let id: number
-    function draw() {
-      ctx!.fillStyle = "rgba(18,18,18,0.1)"
-      ctx!.fillRect(0, 0, w, h)
-      for (const d of dots) {
-        d.x += d.vx; d.y += d.vy
-        if (d.x < 0 || d.x > w) d.vx *= -1
-        if (d.y < 0 || d.y > h) d.vy *= -1
-        ctx!.beginPath()
-        ctx!.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx!.fillStyle = "rgba(59,130,246,0.2)"
-        ctx!.fill()
-      }
-      for (let i = 0; i < dots.length; i++) {
-        for (let j = i + 1; j < dots.length; j++) {
-          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 100) {
-            ctx!.beginPath()
-            ctx!.moveTo(dots[i].x, dots[i].y)
-            ctx!.lineTo(dots[j].x, dots[j].y)
-            ctx!.strokeStyle = `rgba(59,130,246,${0.05 * (1 - dist / 100)})`
-            ctx!.lineWidth = 0.3
-            ctx!.stroke()
-          }
-        }
-      }
-      id = requestAnimationFrame(draw)
-    }
-    draw()
-    const ro = () => { w = c.width = innerWidth; h = c.height = innerHeight }
-    addEventListener("resize", ro)
-    return () => { cancelAnimationFrame(id); removeEventListener("resize", ro) }
-  }, [])
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />
-}
 
 export default function CapturePage() {
   const router = useRouter()
@@ -291,7 +242,7 @@ export default function CapturePage() {
         @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
       `}</style>
 
-      <ParticleField />
+      <ParticleField color="59,130,246" />
 
       <div style={{ position: "relative", zIndex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 16, maxWidth: 600, margin: "0 auto" }}>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}

@@ -48,12 +48,14 @@ async def process_single_capture(capture_id: str, format: str = "exam-oriented",
         raw_text = existing_raw
         provider = "from_cache"
         diagrams = capture.data.get("ai_content_json", {}).get("diagrams", [])
+        tables = capture.data.get("ai_content_json", {}).get("tables", [])
         diagram_results = []
     else:
         result = await process_image(image_url)
         provider = result.get("provider", "unknown")
         raw_text = result.get("raw_text", "")
         diagrams = result.get("diagrams", [])
+        tables = result.get("tables", [])
         diagram_results = []
         if diagrams:
             try:
@@ -118,6 +120,7 @@ async def process_single_capture(capture_id: str, format: str = "exam-oriented",
     ai_content = {
         "raw_text": raw_text,
         "diagrams": diagrams,
+        "tables": tables,
         "enrichment": enrichment,
     }
     if not existing_raw:

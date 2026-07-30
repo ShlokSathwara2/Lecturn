@@ -6,59 +6,10 @@ import { createClient } from "@/lib/supabase"
 import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, aiNotes } from "@/lib/api"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
+import ParticleField from "@/components/ParticleField"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
-
-function ParticleField() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const c = canvasRef.current
-    if (!c) return
-    const ctx = c.getContext("2d")
-    if (!ctx) return
-    let w = c.width = innerWidth
-    let h = c.height = innerHeight
-    const dots: { x: number; y: number; vx: number; vy: number; r: number }[] = []
-    for (let i = 0; i < 35; i++) {
-      dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2, r: Math.random() * 1.2 + 0.3 })
-    }
-    let id: number
-    function draw() {
-      ctx!.fillStyle = "rgba(18,18,18,0.12)"
-      ctx!.fillRect(0, 0, w, h)
-      for (const d of dots) {
-        d.x += d.vx; d.y += d.vy
-        if (d.x < 0 || d.x > w) d.vx *= -1
-        if (d.y < 0 || d.y > h) d.vy *= -1
-        ctx!.beginPath()
-        ctx!.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx!.fillStyle = "rgba(139,92,246,0.2)"
-        ctx!.fill()
-      }
-      for (let i = 0; i < dots.length; i++) {
-        for (let j = i + 1; j < dots.length; j++) {
-          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 110) {
-            ctx!.beginPath()
-            ctx!.moveTo(dots[i].x, dots[i].y)
-            ctx!.lineTo(dots[j].x, dots[j].y)
-            ctx!.strokeStyle = `rgba(139,92,246,${0.06 * (1 - dist / 110)})`
-            ctx!.lineWidth = 0.3
-            ctx!.stroke()
-          }
-        }
-      }
-      id = requestAnimationFrame(draw)
-    }
-    draw()
-    const ro = () => { w = c.width = innerWidth; h = c.height = innerHeight }
-    addEventListener("resize", ro)
-    return () => { cancelAnimationFrame(id); removeEventListener("resize", ro) }
-  }, [])
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />
-}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -77,6 +28,8 @@ export default function NotesPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
   const [chaptersBySubject, setChaptersBySubject] = useState<Record<string, Chapter[]>>({})
+  const [chaptersCountBySubject, setChaptersCountBySubject] = useState<Record<string, number>>({})
+  const [subjectsNotesCount, setSubjectsNotesCount] = useState<Record<string, number>>({})
   const [chapterNotesCount, setChapterNotesCount] = useState<Record<string, number>>({})
   const [aiNotesExist, setAiNotesExist] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
@@ -94,6 +47,33 @@ export default function NotesPage() {
     try {
       const list = await subjectsApi.list(userId)
       setSubjects(list)
+
+      const chapterResults = await Promise.all(
+        list.map((s: Subject) => chaptersApi.list(s.id).catch(() => []))
+      )
+
+      const chCountMap: Record<string, number> = {}
+      const allChapterIds: { subjectId: string; chapterId: string }[] = []
+      list.forEach((s: Subject, i: number) => {
+        chCountMap[s.id] = chapterResults[i].length
+        chapterResults[i].forEach((ch: Chapter) => {
+          allChapterIds.push({ subjectId: s.id, chapterId: ch.id })
+        })
+      })
+
+      const capResults = await Promise.all(
+        allChapterIds.map(({ chapterId }) =>
+          capturesApi.list(chapterId).then((caps: any[]) => caps.length).catch(() => 0)
+        )
+      )
+
+      const notesCountMap: Record<string, number> = {}
+      allChapterIds.forEach(({ subjectId, chapterId }, i) => {
+        notesCountMap[subjectId] = (notesCountMap[subjectId] || 0) + capResults[i]
+      })
+
+      setChaptersCountBySubject(chCountMap)
+      setSubjectsNotesCount(notesCountMap)
     } catch {}
     setLoading(false)
   }
@@ -149,7 +129,7 @@ export default function NotesPage() {
         }
       `}</style>
 
-      <ParticleField />
+      <ParticleField color="139,92,246" dotCount={35} />
 
       <div style={{ position: "relative", zIndex: 1, padding: 16, maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }}>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
@@ -216,7 +196,7 @@ export default function NotesPage() {
                   <p style={{ fontSize: 15, fontWeight: 600, color: "#e8e8e8" }}>{s.name}</p>
                 </div>
                 <span style={{ fontSize: 12, color: "#606060", fontFamily: "var(--font-mono)" }}>
-                  {(chaptersBySubject[s.id] || []).length} ch
+                  {chaptersCountBySubject[s.id] ?? (chaptersBySubject[s.id] || []).length} ch &middot; {subjectsNotesCount[s.id] ?? 0} notes
                 </span>
               </motion.div>
 

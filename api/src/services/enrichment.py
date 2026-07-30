@@ -10,7 +10,7 @@ GROQ_BASE = "https://api.groq.com/openai/v1"
 
 DEFAULT_FORMAT = "exam-oriented"
 
-EXPLANATION_PROMPT = """You are a study assistant. Given the raw text extracted from a lecture slide, generate an enriched study note.
+EXPLANATION_PROMPT = """You are an expert study assistant. Given raw text extracted from a lecture slide (which may include table data and structured content), generate a comprehensive enriched study note.
 
 Format: {format}
 
@@ -20,12 +20,18 @@ Available formats:
 - "summary": A concise plain-text summary
 - "diagram-focused": Focus on explaining any diagrams or visual elements in the text
 
+Smart processing rules:
+- If the text contains table data (rows/columns), preserve it as a well-formatted markdown table in the explanation.
+- Identify and explain any technical concepts, formulas, or definitions.
+- Focus on examinable content: definitions, key differences, processes, formulas, and important relationships.
+- Ignore any leftover watermark text, slide numbers, or decorative artifacts that may have been captured.
+
 Raw text from slide:
 {raw_text}
 
 Return ONLY valid JSON with this structure:
 {{
-  "explanation": "string (the enriched content in the requested format)",
+  "explanation": "string (the enriched content in the requested format, with tables in markdown format)",
   "key_points": ["string", "string", ...],
   "format_used": "{format}"
 }}

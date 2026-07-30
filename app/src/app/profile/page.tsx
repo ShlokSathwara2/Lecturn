@@ -7,56 +7,7 @@ import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesA
 import { motion } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
 import { useTheme } from "@/lib/ThemeContext"
-
-function ParticleField() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const c = canvasRef.current
-    if (!c) return
-    const ctx = c.getContext("2d")
-    if (!ctx) return
-    let w = c.width = innerWidth
-    let h = c.height = innerHeight
-    const dots: { x: number; y: number; vx: number; vy: number; r: number }[] = []
-    for (let i = 0; i < 30; i++) {
-      dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15, r: Math.random() * 1 + 0.3 })
-    }
-    let id: number
-    function draw() {
-      ctx!.fillStyle = "rgba(18,18,18,0.12)"
-      ctx!.fillRect(0, 0, w, h)
-      for (const d of dots) {
-        d.x += d.vx; d.y += d.vy
-        if (d.x < 0 || d.x > w) d.vx *= -1
-        if (d.y < 0 || d.y > h) d.vy *= -1
-        ctx!.beginPath()
-        ctx!.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx!.fillStyle = "rgba(59,130,246,0.2)"
-        ctx!.fill()
-      }
-      for (let i = 0; i < dots.length; i++) {
-        for (let j = i + 1; j < dots.length; j++) {
-          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 110) {
-            ctx!.beginPath()
-            ctx!.moveTo(dots[i].x, dots[i].y)
-            ctx!.lineTo(dots[j].x, dots[j].y)
-            ctx!.strokeStyle = `rgba(59,130,246,${0.05 * (1 - dist / 110)})`
-            ctx!.lineWidth = 0.3
-            ctx!.stroke()
-          }
-        }
-      }
-      id = requestAnimationFrame(draw)
-    }
-    draw()
-    const ro = () => { w = c.width = innerWidth; h = c.height = innerHeight }
-    addEventListener("resize", ro)
-    return () => { cancelAnimationFrame(id); removeEventListener("resize", ro) }
-  }, [])
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />
-}
+import ParticleField from "@/components/ParticleField"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -127,7 +78,7 @@ export default function ProfilePage() {
         }
       `}</style>
 
-      <ParticleField />
+      <ParticleField color="59,130,246" />
 
       <div style={{ position: "relative", zIndex: 1, padding: 16, maxWidth: 500, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh" }}>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}

@@ -9,22 +9,37 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
-PROMPT = """You are analyzing a lecture slide image. Extract the following:
+PROMPT = """You are an expert lecture slide analyzer. Extract ALL content from this slide image intelligently.
 
-1. **verbatim_text**: All readable text content on the slide, preserving headings, bullets, and structure exactly as written.
+RULES:
+- Extract ONLY actual educational content. Ignore watermarks, logos, slide numbers, footers, headers, decorative elements, background patterns, and any non-content artifacts.
+- If a slide has a company/institution watermark (e.g. "© 2024 University"), IGNORE it completely.
+- If there are page numbers, timestamps, or navigation elements, IGNORE them.
+- Focus purely on the knowledge content the lecturer intended to convey.
 
-2. **diagrams**: For any diagrams, charts, graphs, or images on the slide, describe what it represents and its approximate bounding box as percentage coordinates (x%, y%, width%, height%).
+For TABLES:
+- Detect any tabular data (grid layouts, row/column structures, comparison charts).
+- Convert them to clean markdown tables with proper headers and alignment.
+- Preserve all cell values accurately.
 
-3. **summary**: A brief 1-2 sentence summary of what this slide covers.
+For DIAGRAMS/FIGURES:
+- Describe what the diagram represents educational-wise.
+- Include the bounding box as percentage coordinates (x%, y%, width%, height%).
 
-Return ONLY valid JSON with this exact structure:
+For STRUCTURED CONTENT:
+- Preserve bullet points, numbered lists, headings, and subheadings.
+- Keep the logical hierarchy intact.
+
+Return ONLY valid JSON:
 {
-  "verbatim_text": "string",
-  "diagrams": [{"description": "string", "bbox": {"x": float, "y": float, "width": float, "height": float}}],
-  "summary": "string"
+  "verbatim_text": "string (all readable text, preserving structure: headings, bullets, paragraphs)",
+  "tables": [{"headers": ["col1", "col2"], "rows": [["val1", "val2"], ["val3", "val4"]], "caption": "optional table title"}],
+  "diagrams": [{"description": "educational description of what this diagram shows", "bbox": {"x": float, "y": float, "width": float, "height": float}}],
+  "summary": "string (1-2 sentence summary of the slide content)",
+  "content_type": "text|table|diagram|mixed"
 }
 
-If there are no diagrams, return an empty array for "diagrams"."""
+If there are no tables, return empty array for "tables". If no diagrams, return empty array for "diagrams"."""
 
 def parse_json(raw: str) -> dict:
     raw = raw.strip()
@@ -110,10 +125,13 @@ async def process_image(image_url: str) -> dict:
         try:
             result = await call_fn(image_url)
             diagrams = result.get("diagrams", [])
+            tables = result.get("tables", [])
             return {
                 "raw_text": result.get("verbatim_text", ""),
                 "diagrams": diagrams,
+                "tables": tables,
                 "summary": result.get("summary", ""),
+                "content_type": result.get("content_type", "text"),
                 "raw_response": json.dumps(result),
                 "provider": provider_name,
             }
