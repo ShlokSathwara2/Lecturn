@@ -69,7 +69,7 @@ export default function QuizPage() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [chapterNotesMap, setChapterNotesMap] = useState<Record<string, number>>({})
-  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null)
+  const [selectedChapters, setSelectedChapters] = useState<Chapter[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingChapters, setLoadingChapters] = useState(false)
 
@@ -86,7 +86,7 @@ export default function QuizPage() {
 
   async function selectSubject(subject: Subject) {
     setSelectedSubject(subject)
-    setSelectedChapter(null)
+    setSelectedChapters([])
     setLoadingChapters(true)
     try {
       const chs = await chaptersApi.list(subject.id)
@@ -103,7 +103,9 @@ export default function QuizPage() {
 
   function startQuiz() {
     if (selectedSubject) {
-      router.push(`/quiz/${selectedSubject.id}`)
+      const chapterIds = selectedChapters.map(c => c.id)
+      const params = chapterIds.length > 0 ? `?chapters=${chapterIds.join(",")}` : ""
+      router.push(`/quiz/${selectedSubject.id}${params}`)
     }
   }
 
@@ -184,7 +186,7 @@ export default function QuizPage() {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }} style={{ overflow: "hidden" }}>
                   <p style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-                    Step 2: Select a chapter (optional)
+                    Step 2: Select chapters (optional, multi-select)
                   </p>
                   {loadingChapters ? (
                     <div style={{ textAlign: "center", padding: 16 }}>
@@ -200,15 +202,21 @@ export default function QuizPage() {
                           initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                           whileHover={{ scale: 1.01, borderColor: "rgba(59,130,246,0.3)" }}
                           whileTap={{ scale: 0.99 }}
-                          onClick={() => setSelectedChapter(selectedChapter?.id === ch.id ? null : ch)}
-                          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, background: selectedChapter?.id === ch.id ? "rgba(59,130,246,0.08)" : "rgba(26,26,26,0.5)", border: `1px solid ${selectedChapter?.id === ch.id ? "rgba(59,130,246,0.3)" : "#2a2a2a"}`, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left", width: "100%" }}>
+                          onClick={() => {
+                            const isSelected = selectedChapters.some(c => c.id === ch.id)
+                            setSelectedChapters(isSelected
+                              ? selectedChapters.filter(c => c.id !== ch.id)
+                              : [...selectedChapters, ch]
+                            )
+                          }}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, background: selectedChapters.some(c => c.id === ch.id) ? "rgba(59,130,246,0.08)" : "rgba(26,26,26,0.5)", border: `1px solid ${selectedChapters.some(c => c.id === ch.id) ? "rgba(59,130,246,0.3)" : "#2a2a2a"}`, cursor: "pointer", transition: "all 0.2s ease", textAlign: "left", width: "100%" }}>
                             <div>
                               <span style={{ fontSize: 14, fontWeight: 500, color: "#e8e8e8" }}>{ch.title}</span>
                               <p style={{ fontSize: 11, color: "#606060", fontFamily: "var(--font-mono)", marginTop: 2 }}>
                                 {chapterNotesMap[ch.id] || 0} note{(chapterNotesMap[ch.id] || 0) !== 1 ? "s" : ""}
                               </p>
                             </div>
-                            {selectedChapter?.id === ch.id && <span style={{ color: "#3b82f6", fontSize: 13 }}>&#10003;</span>}
+                            {selectedChapters.some(c => c.id === ch.id) && <span style={{ color: "#3b82f6", fontSize: 13 }}>&#10003;</span>}
                         </motion.button>
                       ))}
                     </div>

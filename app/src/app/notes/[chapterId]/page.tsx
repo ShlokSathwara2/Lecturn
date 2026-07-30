@@ -72,16 +72,16 @@ export default function ChapterNotesPage() {
       const caps = await capturesApi.list(chapterId)
       setCaptures(caps)
 
-      const audio: Record<string, { transcript?: string; audio_url?: string }> = {}
-      for (const cap of caps) {
-        try {
-          const notes = await audioNotesApi.list(cap.id)
-          if (notes.length > 0) {
-            audio[cap.id] = { transcript: notes[0].transcript, audio_url: notes[0].audio_url }
+      if (caps.length > 0) {
+        const audioMapData = await audioNotesApi.batch(caps.map((c: Capture) => c.id))
+        const audio: Record<string, { transcript?: string; audio_url?: string }> = {}
+        for (const [capId, notes] of Object.entries(audioMapData)) {
+          if (notes && notes.length > 0) {
+            audio[capId] = { transcript: notes[0].transcript, audio_url: notes[0].audio_url }
           }
-        } catch {}
+        }
+        setAudioMap(audio)
       }
-      setAudioMap(audio)
     } catch (e) {
       console.error("Failed to load chapter notes", e)
     } finally {

@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-from .routers import subjects, chapters, captures, audio_notes, usage_log, process, search, quiz, export_routes as export_router, ai_notes
+from .routers import subjects, chapters, captures, audio_notes, usage_log, process, search, quiz, export_routes as export_router, ai_notes, dashboard
 
 app = FastAPI(title="SlideScribe API", version="1.0.0")
 
@@ -34,6 +34,7 @@ app.include_router(search.router)
 app.include_router(quiz.router)
 app.include_router(export_router.router)
 app.include_router(ai_notes.router)
+app.include_router(dashboard.router)
 
 @app.get("/health")
 async def health():

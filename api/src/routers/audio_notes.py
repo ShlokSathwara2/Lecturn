@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
 from ..models import AudioNoteCreate
 from ..supabase_client import supabase
 from ..services.transcription import transcribe_audio
 import uuid
 from datetime import date
+from typing import List
 
 router = APIRouter(prefix="/audio-notes", tags=["audio_notes"])
 BUCKET_NAME = "slide-images"
@@ -14,6 +16,23 @@ async def list_audio_notes(capture_id: str = ""):
     if capture_id:
         query = query.eq("capture_id", capture_id)
     return query.execute().data
+
+class BatchAudioRequest(BaseModel):
+    capture_ids: List[str]
+
+@router.post("/batch")
+async def get_audio_notes_batch(body: BatchAudioRequest):
+    if not body.capture_ids:
+        return {}
+    data = supabase.table("audio_notes").select("*").in_("capture_id", body.capture_ids).execute().data
+    result: dict[str, list] = {}
+    for note in data:
+        cid = note.get("capture_id")
+        if cid:
+            if cid not in result:
+                result[cid] = []
+            result[cid].append(note)
+    return result
 
 @router.post("", status_code=201)
 async def create_audio_note(body: AudioNoteCreate):

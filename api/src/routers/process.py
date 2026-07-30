@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from ..supabase_client import supabase
 from ..services.vision import process_image
@@ -176,18 +176,34 @@ async def process_single_capture(capture_id: str, format: str = "exam-oriented",
         chapter_title=ch_title,
     )
 
+@router.get("/{capture_id}/status")
+async def get_process_status(capture_id: str):
+    capture = supabase.table("captures").select("id, ai_status, status").eq("id", capture_id).maybe_single().execute()
+    if not capture.data:
+        raise HTTPException(404, "Capture not found")
+    return {
+        "capture_id": capture_id,
+        "status": capture.data.get("status", "pending"),
+        "ai_status": capture.data.get("ai_status", "pending"),
+    }
+
+
 @router.post("")
-async def process_capture(body: ProcessRequest) -> ProcessResponse:
-    try:
-        return await process_single_capture(body.capture_id)
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Process failed for {body.capture_id}: {e}")
+async def process_capture(body: ProcessRequest, background_tasks: BackgroundTasks):
+    capture = supabase.table("captures").select("id, status").eq("id", body.capture_id).maybe_single().execute()
+    if not capture.data:
+        raise HTTPException(404, f"Capture {body.capture_id} not found")
+    if capture.data.get("status") == "processed":
         return ProcessResponse(
             capture_id=body.capture_id, raw_text="", diagram_count=0,
-            summary=f"Processing will retry later", provider="pending",
+            summary="Already processed", provider="cached",
         )
+    supabase.table("captures").update({"status": "processing"}).eq("id", body.capture_id).execute()
+    background_tasks.add_task(process_single_capture, body.capture_id)
+    return ProcessResponse(
+        capture_id=body.capture_id, raw_text="", diagram_count=0,
+        summary="Processing started", provider="background",
+    )
 
 @router.post("/batch")
 async def process_batch(body: BatchProcessRequest) -> list[ProcessResponse]:

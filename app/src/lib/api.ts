@@ -119,6 +119,8 @@ export const captures = {
 export const audioNotes = {
   list: (captureId: string) =>
     request<any[]>(`/audio-notes?capture_id=${captureId}`),
+  batch: (captureIds: string[]) =>
+    request<Record<string, any[]>>("/audio-notes/batch", { method: "POST", body: JSON.stringify({ capture_ids: captureIds }) }),
   upload: async (captureId: string, file: Blob) => {
     const form = new FormData()
     form.append("capture_id", captureId)
@@ -141,9 +143,21 @@ export const aiNotes = {
     request<any>(`/ai-notes/${subjectId}`, { method: "DELETE" }),
 }
 
+export const dashboard = {
+  get: (userId: string) =>
+    request<{ subjects: any[]; chapters_count: Record<string, number>; notes_count: Record<string, number>; unassigned: any[] }>(`/dashboard/${userId}`),
+}
+
+export const processStatus = {
+  get: (captureId: string) =>
+    request<{ capture_id: string; status: string; ai_status: string }>(`/process/${captureId}/status`),
+}
+
 export const quiz = {
-  get: (subjectId: string) =>
-    request<{ subject_id: string; total_cards: number; cards: any[] }>(`/quiz/${subjectId}`),
+  get: (subjectId: string, chapterIds?: string) => {
+    const params = chapterIds ? `?chapters=${chapterIds}` : ""
+    return request<{ subject_id: string; total_cards: number; cards: any[] }>(`/quiz/${subjectId}${params}`)
+  },
 }
 
 export const exportApi = {
