@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSwipe } from "@/lib/useSwipe"
-import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processApi } from "@/lib/api"
+import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, processing as processApi, processStatus as processStatusApi } from "@/lib/api"
 import { createClient } from "@/lib/supabase"
 import { preprocess, type PreprocessResult } from "@/lib/preprocess"
 import { queueCapture } from "@/lib/offline-queue"
@@ -92,6 +92,8 @@ export default function CapturePage() {
   const [assignChapterName, setAssignChapterName] = useState("")
   const [assigning, setAssigning] = useState(false)
   const subjectInputRef = useRef<HTMLInputElement>(null)
+  const [processingCaptureId, setProcessingCaptureId] = useState<string | null>(null)
+  const [processingStatus, setProcessingStatus] = useState<string>("idle")
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -108,6 +110,20 @@ export default function CapturePage() {
       setTimeout(() => subjectInputRef.current?.focus(), 300)
     }
   }, [showAssignPicker])
+
+  useEffect(() => {
+    if (!processingCaptureId || processingStatus === "processed") return
+    const interval = setInterval(async () => {
+      try {
+        const status = await processStatusApi.get(processingCaptureId)
+        setProcessingStatus(status.status)
+        if (status.status === "processed" || status.status === "needs_review") {
+          setProcessingCaptureId(null)
+        }
+      } catch {}
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [processingCaptureId, processingStatus])
 
   async function handleCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -177,18 +193,13 @@ export default function CapturePage() {
       const { url } = await capturesApi.uploadImage(fileToUpload)
       const cap = await capturesApi.create({ image_url: url })
 
-      try {
-        await processApi.capture(cap.id)
-      } catch (procErr) {
-        console.warn("Processing will run later:", procErr)
-      }
+      setProcessingCaptureId(cap.id)
+      setProcessingStatus("processing")
+
+      processApi.capture(cap.id).catch(() => {})
 
       if (audioBlob) {
-        try {
-          await audioNotesApi.upload(cap.id, audioBlob)
-        } catch (e) {
-          console.warn("Audio upload failed:", e)
-        }
+        audioNotesApi.upload(cap.id, audioBlob).catch(() => {})
       }
 
       setPendingCaptureId(cap.id)
@@ -255,6 +266,8 @@ export default function CapturePage() {
     setPendingCaptureId(null)
     setAssignSubjectName("")
     setAssignChapterName("")
+    setProcessingCaptureId(null)
+    setProcessingStatus("idle")
     if (fileRef.current) fileRef.current.value = ""
   }
 
@@ -382,7 +395,16 @@ export default function CapturePage() {
             style={{ textAlign: "center", padding: 16, border: "1px solid #2a2a2a", borderRadius: 12, background: "rgba(26,26,26,0.7)" }}>
             {online ? (
               <>
-                <p style={{ color: "#059669", fontSize: 14, fontWeight: 500 }}>Slide captured & processed</p>
+                <p style={{ color: "#059669", fontSize: 14, fontWeight: 500 }}>Slide captured</p>
+                {processingCaptureId && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      style={{ fontSize: 12, color: "#3b82f6" }}>&#x21BB;</motion.div>
+                    <p style={{ color: "#3b82f6", fontSize: 12, fontFamily: "var(--font-mono)" }}>
+                      AI enrichment processing...
+                    </p>
+                  </div>
+                )}
                 {assignedChapter && (
                   <p style={{ color: "#3b82f6", fontSize: 13, fontFamily: "var(--font-mono)", marginTop: 4 }}>Assigned to: {assignedChapter}</p>
                 )}

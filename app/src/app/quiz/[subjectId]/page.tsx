@@ -16,6 +16,8 @@ interface Card {
 export default function QuizPage() {
   const { subjectId } = useParams<{ subjectId: string }>()
   const router = useRouter()
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null
+  const chapterIds = searchParams?.get("chapters") || undefined
 
   const [cards, setCards] = useState<Card[]>([])
   const [index, setIndex] = useState(0)
@@ -25,7 +27,7 @@ export default function QuizPage() {
   const [totalStarted, setTotalStarted] = useState(0)
 
   useEffect(() => {
-    quizApi.get(subjectId).then((data) => {
+    quizApi.get(subjectId, chapterIds).then((data) => {
       const shuffled = data.cards.sort(() => Math.random() - 0.5)
       setCards(shuffled)
       setTotalStarted(shuffled.length)
@@ -34,7 +36,7 @@ export default function QuizPage() {
       setLoading(false)
       setDone(true)
     })
-  }, [subjectId])
+  }, [subjectId, chapterIds])
 
   function next(rating: "easy" | "hard") {
     if (rating === "hard") {
@@ -99,7 +101,7 @@ export default function QuizPage() {
           {revealed ? "ANSWER" : "QUESTION"}
         </div>
         {!revealed ? (
-          <p style={{ fontSize: 18, lineHeight: 1.5, color: "#e8e8e8" }}>{card.front}</p>
+          <p style={{ fontSize: 18, lineHeight: 1.5, color: "#e8e8e8", whiteSpace: "pre-wrap" }}>{card.front}</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <p style={{ fontSize: 15, lineHeight: 1.6, color: "#e8e8e8", whiteSpace: "pre-wrap" }}>{card.back}</p>

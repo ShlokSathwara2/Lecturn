@@ -1,17 +1,25 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
 from ..supabase_client import supabase
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 
 @router.get("/{subject_id}")
-async def get_subject_quiz(subject_id: str):
-    chapters = supabase.table("chapters").select("id, title").eq("subject_id", subject_id).execute().data
-    if not chapters:
+async def get_subject_quiz(subject_id: str, chapters: Optional[str] = Query(None)):
+    query = supabase.table("chapters").select("id, title").eq("subject_id", subject_id)
+    
+    if chapters:
+        chapter_ids_filter = [c.strip() for c in chapters.split(",") if c.strip()]
+        if chapter_ids_filter:
+            query = query.in_("id", chapter_ids_filter)
+    
+    chapters_data = query.execute().data
+    if not chapters_data:
         raise HTTPException(404, "Subject not found or has no chapters")
 
-    chapter_ids = [ch["id"] for ch in chapters]
-    chapter_map = {ch["id"]: ch["title"] for ch in chapters}
+    chapter_ids = [ch["id"] for ch in chapters_data]
+    chapter_map = {ch["id"]: ch["title"] for ch in chapters_data}
 
     captures = supabase.table("captures").select(
         "id, chapter_id, raw_text, ai_content_json"
@@ -28,7 +36,16 @@ async def get_subject_quiz(subject_id: str):
 
         raw = cap.get("raw_text") or ""
         lines = [l.strip() for l in raw.split("\n") if l.strip()]
-        front = lines[0][:120] if lines else "Slide"
+        
+        front = "Slide"
+        if lines:
+            title = lines[0][:120]
+            if key_points:
+                front = f"{title}\n\nKey concept: {key_points[0][:100]}"
+            elif len(lines) > 1:
+                front = f"{title}\n\n{lines[1][:100]}"
+            else:
+                front = title
 
         cards.append({
             "id": cap["id"],

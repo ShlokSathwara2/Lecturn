@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase"
-import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi } from "@/lib/api"
+import { subjects as subjectsApi, chapters as chaptersApi, captures as capturesApi, dashboard as dashboardApi } from "@/lib/api"
 import { getQueue, removeFromQueue } from "@/lib/offline-queue"
 import { useOnlineStatus } from "@/lib/useOnlineStatus"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePageAccent } from "@/lib/AccentContext"
 import BatchAIGeneration from "@/components/BatchAIGeneration"
+import useSWR from "swr"
 
 interface Subject { id: string; name: string }
 interface Chapter { id: string; subject_id: string; title: string; created_at: string }
@@ -166,6 +167,33 @@ export default function DashboardPage() {
   const [assigning, setAssigning] = useState(false)
   const subjectInputRef = useRef<HTMLInputElement>(null)
 
+  const fetcher = useCallback(async (url: string) => {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error("Failed to fetch")
+    return res.json()
+  }, [])
+
+  const { data: dashData, mutate: mutateDash } = useSWR(
+    userId ? `/api/proxy?path=${encodeURIComponent(`/dashboard/${userId}`)}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000,
+      refreshInterval: 30000,
+    }
+  )
+
+  useEffect(() => {
+    if (dashData) {
+      setSubjects(dashData.subjects || [])
+      setChaptersCountBySubject(dashData.chapters_count || {})
+      setSubjectsNotesMap(dashData.notes_count || {})
+      setUnassignedCaptures(dashData.unassigned || [])
+      setLoading(false)
+    }
+  }, [dashData])
+
   const refreshQueue = useCallback(async () => {
     try {
       const q = await getQueue()
@@ -201,7 +229,6 @@ export default function DashboardPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push("/auth"); return }
       setUserId(data.user.id)
-      loadData(data.user.id)
       refreshQueue()
     })
   }, [])
@@ -215,41 +242,6 @@ export default function DashboardPage() {
       setTimeout(() => subjectInputRef.current?.focus(), 300)
     }
   }, [showAssignPicker])
-
-  async function loadData(uid?: string) {
-    setLoading(true)
-    try {
-      const [list, unassigned] = await Promise.all([
-        subjectsApi.list(uid || ""),
-        capturesApi.unassigned(uid).catch(() => []),
-      ])
-      setSubjects(list)
-      setUnassignedCaptures(unassigned)
-
-      const chapterResults = await Promise.all(list.map((s: Subject) => chaptersApi.list(s.id).catch(() => [])))
-
-      const countMap: Record<string, number> = {}
-      list.forEach((s: Subject, i: number) => {
-        countMap[s.id] = chapterResults[i].length
-      })
-      setChaptersCountBySubject(countMap)
-
-      const captureResults = await Promise.all(
-        chapterResults.flat().map((ch: Chapter) => capturesApi.list(ch.id).catch(() => []))
-      )
-
-      const notesMap: Record<string, number> = {}
-      list.forEach((s: Subject) => { notesMap[s.id] = 0 })
-      chapterResults.forEach((chs: Chapter[], i: number) => {
-        const startIdx = chapterResults.slice(0, i).reduce((sum, arr) => sum + arr.length, 0)
-        chs.forEach((ch: Chapter, j: number) => {
-          notesMap[ch.subject_id] = (notesMap[ch.subject_id] || 0) + captureResults[startIdx + j].length
-        })
-      })
-      setSubjectsNotesMap(notesMap)
-    } catch {}
-    setLoading(false)
-  }
 
   async function toggleSubject(subjectId: string) {
     if (expandedSubject === subjectId) {
@@ -273,7 +265,7 @@ export default function DashboardPage() {
       if (!user) return
       await subjectsApi.create({ name: newSubjectName.trim(), user_id: user.id })
       setNewSubjectName("")
-      await loadData(user.id)
+      mutateDash()
     } catch (e) {
       console.warn("Failed to add subject", e)
     }
@@ -326,7 +318,7 @@ export default function DashboardPage() {
       setPendingCaptureId(null)
       setAssignSubjectName("")
       setAssignChapterName("")
-      await loadData(u.id)
+      mutateDash()
     } catch (e) {
       console.warn("Assign failed", e)
     }
@@ -381,7 +373,7 @@ export default function DashboardPage() {
           </h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#059669" : "#f59e0b", flexShrink: 0 }} />
-            {userId && <BatchAIGeneration userId={userId} onDone={() => loadData(userId)} />}
+            {userId && <BatchAIGeneration userId={userId} onDone={() => mutateDash()} />}
           </div>
         </motion.div>
 
